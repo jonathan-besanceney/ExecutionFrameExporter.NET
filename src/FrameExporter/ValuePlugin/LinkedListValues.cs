@@ -4,7 +4,7 @@ using FrameExporter;
 
 using Microsoft.Samples.Debugging.MdbgEngine;
 
-namespace connector.ValuePlugin
+namespace FrameExporter.ValuePlugin
 {
     class LinkedListValues
     {

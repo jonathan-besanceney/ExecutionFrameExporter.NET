@@ -9,7 +9,7 @@ using System.IO;
 
 namespace Microsoft.Samples.Tools.Mdbg
 {
-    class MDbgSourceFileMgr : IMDbgSourceFileMgr
+    public class MDbgSourceFileMgr : IMDbgSourceFileMgr
     {
         public IMDbgSourceFile GetSourceFile(string path)
         {
