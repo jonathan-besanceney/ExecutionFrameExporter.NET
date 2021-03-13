@@ -36,7 +36,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "raw", "debugger\raw\raw.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NativeDebugWrappers", "debugger\NativeDebugWrappers\NativeDebugWrappers.csproj", "{3991AB6C-468B-4C28-95FC-3188CFB34180}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrameExporter", "connector\FrameExporter.csproj", "{3DA38554-AFD3-4E37-A21A-1B867FDAB383}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrameExporter", "FrameExporter\FrameExporter.csproj", "{3DA38554-AFD3-4E37-A21A-1B867FDAB383}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
