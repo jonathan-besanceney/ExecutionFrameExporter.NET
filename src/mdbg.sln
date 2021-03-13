@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.1267
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "corapi", "debugger\corapi\corapi.csproj", "{04EF9865-E1B1-403D-802B-E4FAEA50A634}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mdbgeng", "debugger\mdbgeng\mdbgeng.csproj", "{634B90A2-0344-44C5-83F0-06180B2FDA05}"
@@ -51,6 +53,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PythonExt", "extensions\pythonExt\PythonExt.csproj", "{D8616ACA-4293-47BE-9FC3-9C612FD991F6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silverlight", "extensions\Silverlight\Silverlight.csproj", "{B078F1B1-2E59-4121-9881-1544B9B34B1A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrameExporter", "connector\FrameExporter.csproj", "{3DA38554-AFD3-4E37-A21A-1B867FDAB383}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -191,15 +195,29 @@ Global
 		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Debug|Mixed platforms.ActiveCfg = Debug|Any CPU
-		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Debug|Mixed platforms.Build.0 = Debug|Any CPU
 		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Debug|Win32.ActiveCfg = Debug|Any CPU
 		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Release|Mixed platforms.ActiveCfg = Release|Any CPU
 		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Release|Mixed platforms.Build.0 = Release|Any CPU
 		{B078F1B1-2E59-4121-9881-1544B9B34B1A}.Release|Win32.ActiveCfg = Release|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Debug|Mixed platforms.ActiveCfg = Debug|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Debug|Mixed platforms.Build.0 = Debug|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Debug|Win32.ActiveCfg = Debug|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Debug|Win32.Build.0 = Debug|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Release|Mixed platforms.ActiveCfg = Release|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Release|Mixed platforms.Build.0 = Release|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Release|Win32.ActiveCfg = Release|Any CPU
+		{3DA38554-AFD3-4E37-A21A-1B867FDAB383}.Release|Win32.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DE09ED2D-590D-4B4A-80AE-512A11243AE4}
 	EndGlobalSection
 EndGlobal

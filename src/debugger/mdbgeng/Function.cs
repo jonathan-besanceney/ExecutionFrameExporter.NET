@@ -180,6 +180,28 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         }
 
         /// <summary>
+        /// Starting Line of the current function
+        /// </summary>
+        public int StartLine
+        {
+            get
+            {
+                return m_SPstartLines[0];
+            }
+        }
+
+        /// <summary>
+        /// Ending line of the current function
+        /// </summary>
+        public int EndLine
+        {
+            get
+            {
+                return m_SPendLines[m_SPcount - 1];
+            }
+        }
+
+        /// <summary>
         /// Releases all resources used by the MDbgFunction.
         /// </summary>
         public void Dispose()

@@ -25,12 +25,14 @@ using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 using Microsoft.Samples.Debugging.CorPublish;
 using Microsoft.Samples.Debugging.Native;
 using Microsoft.Samples.Debugging.CorDebug.Utility;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("connector, PublicKey=0024000004800000940000000602000000240000525341310004000001000100059DC2BFBCB9824C639483A15239110B69AD0ED44E2319A3991D22072FC7F4660D94B631AD54A93A6F2A644995AE794F9F31A8CD4E75C58F8ED0CCF27A08309E791A6BB278309BC01CBDF1D968870AE3E792F78E9BA496A7C375ABB7B00266AF8B35D1D5B18237A7758850F0F93EBE3A6C1847930F02F1B75038019CBC9F96CC")]
 namespace Microsoft.Samples.Tools.Mdbg
 {
     // no instances of this class 
-
-
+    
+    
     sealed internal class MdbgCommands : CommandBase
     {
         private static System.Resources.ResourceManager g_rm;

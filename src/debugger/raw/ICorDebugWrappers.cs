@@ -14,7 +14,6 @@ using System.Runtime.InteropServices;
 
 using IStream = System.Runtime.InteropServices.ComTypes.IStream;
 using Microsoft.Samples.Debugging.CorMetadata.NativeApi;
-using Microsoft.Win32.SafeHandles;
 
 namespace Microsoft.Samples.Debugging.CorDebug.NativeApi
 {

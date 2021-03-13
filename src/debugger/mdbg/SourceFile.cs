@@ -7,8 +7,6 @@ using System;
 using System.Collections;
 using System.IO;
 
-using Microsoft.Samples.Debugging.MdbgEngine;
-
 namespace Microsoft.Samples.Tools.Mdbg
 {
     class MDbgSourceFileMgr : IMDbgSourceFileMgr

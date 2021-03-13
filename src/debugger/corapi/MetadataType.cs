@@ -78,7 +78,7 @@ namespace Microsoft.Samples.Debugging.CorMetadata
             }
         }
 
-        private static string GetTypeName(IMetadataImport importer, int tk)
+        public static string GetTypeName(IMetadataImport importer, int tk)
         {
             // Get the base type name
             StringBuilder sbBaseName = new StringBuilder();
