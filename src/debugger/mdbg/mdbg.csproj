@@ -96,7 +96,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\mdbg.snk" />
-    <None Include="app.config" />
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>

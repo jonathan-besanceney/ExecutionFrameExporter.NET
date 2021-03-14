@@ -66,16 +66,17 @@ namespace FrameExporter
             }
             set
             {
-                if (m_ExecutablePath != null)
-                {
-                    throw new ArgumentException("Executable Path and PID are mutually exclusives : Executable Path is already set to " + m_ExecutablePath);
-                }
                 if (m_PID == C_PID_NOT_SET)
                 {
                     throw new ArgumentException("PID can't be " + C_PID_NOT_SET);
                 }
                 m_PID = value;
             }
+        }
+
+        public bool IsPIDSet()
+        {
+            return m_PID != C_PID_NOT_SET;
         }
 
         private string m_ExecutablePath = string.Empty;
@@ -91,10 +92,6 @@ namespace FrameExporter
             }
             set
             {
-                if (m_PID != C_PID_NOT_SET)
-                {
-                    throw new ArgumentException("Executable Path and PID are mutually exclusives : PID is already set to " + m_PID);
-                }
                 if (value == null || value == string.Empty)
                 {
                     throw new ArgumentException("Executable Path can't be null !");
@@ -112,15 +109,15 @@ namespace FrameExporter
             string err = string.Empty;
             if (m_SourcePath == string.Empty)
             {
-                err = "* Source Path is empty\n";
+                err = "* Source Path should be set\n";
             }
             if (m_SymbolPath == string.Empty)
             {
-                err += "* Symbol Path is empty\n";
+                err += "* Symbol Path should be set\n";
             }
-            if (m_PID == C_PID_NOT_SET && m_ExecutablePath == string.Empty)
+            if (m_ExecutablePath == string.Empty)
             {
-                err += "* Either PID or Executable Path should be set";
+                err += "* Executable Path should be set";
             }
             if ( err != string.Empty )
             {

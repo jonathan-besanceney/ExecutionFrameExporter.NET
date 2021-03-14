@@ -19,14 +19,12 @@ namespace FrameExporter
         private MDbgEngine debugger = null;
 
         private readonly MDbgSourceFileMgr sourceFileMgr = null;
-        //private readonly Dictionary<string, MDbgSourceFile> sourceFiles = null;
         private readonly Dictionary<int, MethodDesc> methods = null;
         private List<Assembly> assemblies = new List<Assembly>();
 
         private DebuggerDriver()
         {
             sourceFileMgr = new MDbgSourceFileMgr();
-            //sourceFiles = new Dictionary<string, MDbgSourceFile>();
             methods = new Dictionary<int, MethodDesc>();
         }
 
@@ -43,26 +41,41 @@ namespace FrameExporter
 
             // set source and pdb folders
             debugger.Options.SymbolPath = m_ProcessToDebug.SymbolPath;
-            Console.WriteLine("SymbolPath set to " + m_ProcessToDebug.SymbolPath);
+            Console.WriteLine($"SymbolPath set to {m_ProcessToDebug.SymbolPath}");
             shell.FileLocator.Path = m_ProcessToDebug.SourcePath;
-            Console.WriteLine("SourcePath set to " + m_ProcessToDebug.SourcePath);
+            Console.WriteLine($"SourcePath set to {m_ProcessToDebug.SourcePath}");
 
+            // Load source files
+            Console.WriteLine("Building source cache");
+            sourceFileMgr.BuildSourceCache(m_ProcessToDebug.SourcePath);
+
+            // TODO Create AssemblyMgr
+            // Load assemblies 
+            assemblies.Add(Assembly.LoadFile(m_ProcessToDebug.ExecutablePath));
+
+            Console.Write($"Get CLR Version of {m_ProcessToDebug.ExecutablePath}: ");
             string version = MdbgVersionPolicy.GetDefaultLaunchVersion(m_ProcessToDebug.ExecutablePath);
+            Console.WriteLine(version);
+            Console.Write("Create debugable process...");
             dbgProcess = debugger.Processes.CreateLocalProcess(new CorDebugger(version));
+            Console.WriteLine("done");
             if (dbgProcess == null)
             {
                 throw new MDbgShellException("Could not create debugging interface for runtime version " + version);
             }
             dbgProcess.DebugMode = DebugModeFlag.Debug;
-            if (m_ProcessToDebug.ExecutablePath != string.Empty)
+            if (m_ProcessToDebug.IsPIDSet())
             {
-                dbgProcess.CreateProcess(m_ProcessToDebug.ExecutablePath, m_ProcessToDebug.ExecutablePath);
-                assemblies.Add(Assembly.LoadFile(m_ProcessToDebug.ExecutablePath));
+                Console.Write($"Attaching PID {m_ProcessToDebug.PID}...");
+                dbgProcess.Attach(m_ProcessToDebug.PID);
             }
             else
             {
-                dbgProcess.Attach(m_ProcessToDebug.PID);
+                // TODO Deal with arguments !
+                Console.Write($"Create process {m_ProcessToDebug.ExecutablePath}...");
+                dbgProcess.CreateProcess(m_ProcessToDebug.ExecutablePath, m_ProcessToDebug.ExecutablePath);
             }
+            Console.WriteLine("done");
         }
 
         public void Run()
