@@ -5,15 +5,13 @@
 //---------------------------------------------------------------------
 using System;
 using System.Collections;
-using System.Reflection;
 using System.Diagnostics;
 using System.Diagnostics.SymbolStore;
+using System.Reflection;
 using System.Text;
-
 
 using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
-using Microsoft.Samples.Debugging.CorMetadata;
 
 
 namespace Microsoft.Samples.Debugging.MdbgEngine

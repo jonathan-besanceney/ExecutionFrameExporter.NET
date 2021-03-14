@@ -11,17 +11,12 @@
 
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Runtime.InteropServices;
-using System.Diagnostics;
 using System.Runtime.Serialization;
+using System.Security.Permissions;
 
-using Microsoft.Samples.Debugging.Native;
 using Microsoft.Samples.Debugging.Native.Private;
 using Microsoft.Win32.SafeHandles;
-using System.Security.Permissions;
-using System.IO;
 
 namespace Microsoft.Samples.Debugging.Native.Private
 {

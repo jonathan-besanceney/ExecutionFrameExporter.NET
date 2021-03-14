@@ -6,14 +6,12 @@
 
 
 // These interfaces serve as an extension to the BCL's SymbolStore interfaces.
-namespace Microsoft.Samples.Debugging.CorSymbolStore 
+namespace Microsoft.Samples.Debugging.CorSymbolStore
 {
-    using System.Diagnostics.SymbolStore;
-
-	// Only statics, does not need to be marked with the serializable attribute    
+    // Only statics, does not need to be marked with the serializable attribute    
     using System;
 
-	[Serializable(), FlagsAttribute()]
+    [Serializable(), FlagsAttribute()]
     public enum SymSearchPolicies
     {
         // query the registry for symbol search paths

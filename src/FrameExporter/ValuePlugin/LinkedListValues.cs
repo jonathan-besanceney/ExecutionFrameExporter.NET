@@ -1,7 +1,5 @@
 ﻿using System.Threading.Tasks;
 
-using FrameExporter;
-
 using Microsoft.Samples.Debugging.MdbgEngine;
 
 namespace FrameExporter.ValuePlugin

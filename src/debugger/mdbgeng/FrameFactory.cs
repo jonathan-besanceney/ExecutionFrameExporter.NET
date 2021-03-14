@@ -4,14 +4,11 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
 
 using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorMetadata;
 using Microsoft.Samples.Debugging.Native;
-using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 
 
 namespace Microsoft.Samples.Debugging.MdbgEngine

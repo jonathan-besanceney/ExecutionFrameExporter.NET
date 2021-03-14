@@ -4,21 +4,18 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.IO;
 using System.Collections;
-using System.Reflection;
 using System.Diagnostics;
 using System.Text;
 
 using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorMetadata;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 
 
 namespace Microsoft.Samples.Debugging.MdbgEngine
 {
     // Class for some internal utility functions.
-    
+
     /// <summary>
     /// InternalUtil - a place for utility functions.
     /// </summary>

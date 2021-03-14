@@ -1,6 +1,4 @@
-﻿using FrameExporter;
-
-using Microsoft.Samples.Debugging.MdbgEngine;
+﻿using Microsoft.Samples.Debugging.MdbgEngine;
 
 namespace FrameExporter.ValuePlugin
 {

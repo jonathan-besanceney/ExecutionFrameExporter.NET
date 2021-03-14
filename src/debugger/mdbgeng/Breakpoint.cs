@@ -5,16 +5,14 @@
 //---------------------------------------------------------------------
 using System;
 using System.Collections;
-using System.Globalization;
-using System.Text;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 using System.Diagnostics.SymbolStore;
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 
 using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorMetadata;
-using System.Collections.Generic;
 
 namespace Microsoft.Samples.Debugging.MdbgEngine
 {

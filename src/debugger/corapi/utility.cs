@@ -4,20 +4,13 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.Threading;
-using System.Diagnostics;
-using System.Collections;
+using System.Runtime.InteropServices;
 using System.Security.Permissions;
 
-using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
-using Microsoft.Samples.Debugging.CorMetadata;
-using System.Runtime.InteropServices;
-using System.Runtime.ConstrainedExecution;
-using Microsoft.Samples.Debugging.CorDebug.Utility;
+using Microsoft.Samples.Debugging.MetaDataLocator;
 using Microsoft.Samples.Debugging.Native;
 using Microsoft.Win32.SafeHandles;
-using Microsoft.Samples.Debugging.MetaDataLocator;
 
 
 namespace Microsoft.Samples.Debugging.CorDebug.Utility

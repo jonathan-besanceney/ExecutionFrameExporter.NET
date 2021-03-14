@@ -12,7 +12,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorMetadata;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 
 

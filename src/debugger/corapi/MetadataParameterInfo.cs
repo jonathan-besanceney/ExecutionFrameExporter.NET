@@ -5,15 +5,10 @@
 //---------------------------------------------------------------------
 using System;
 using System.Reflection;
-using System.Collections;
-using System.Text;
-using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
-using System.Globalization;
-using System.Diagnostics;
+using System.Text;
 
-using Microsoft.Samples.Debugging.CorDebug; 
-using Microsoft.Samples.Debugging.CorMetadata.NativeApi; 
+using Microsoft.Samples.Debugging.CorMetadata.NativeApi;
 
 namespace Microsoft.Samples.Debugging.CorMetadata
 {

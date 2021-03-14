@@ -9,7 +9,6 @@
 namespace Microsoft.Samples.Debugging.CorSymbolStore 
 {
     using System.Diagnostics.SymbolStore;
-
     
     using System;
     using System.Text;

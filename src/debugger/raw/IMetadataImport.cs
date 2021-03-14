@@ -4,11 +4,8 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.Reflection;
-using System.Text;
 using System.Runtime.InteropServices;
-using System.Globalization;
-using System.Diagnostics;
+using System.Text;
 
 namespace Microsoft.Samples.Debugging.CorMetadata.NativeApi
 {

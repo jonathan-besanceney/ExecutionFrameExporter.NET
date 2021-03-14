@@ -5,26 +5,20 @@
 //---------------------------------------------------------------------
 #undef TRACE
 using System;
-using System.Threading;
-using System.Diagnostics;
 using System.Collections;
-using System.Collections.Specialized;
 using System.Collections.Generic;
-using System.Reflection;
-using System.IO;
+using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Globalization;
-
-using Microsoft.Win32.SafeHandles;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Threading;
 
 using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
-using Microsoft.Samples.Debugging.CorMetadata;
-
-using System.Runtime.InteropServices;
-using System.Runtime.Remoting;
-using System.Runtime.Remoting.Channels;
-using Microsoft.Samples.Debugging.Native;
 using Microsoft.Samples.Debugging.CorDebug.Utility;
+using Microsoft.Samples.Debugging.CorMetadata;
+using Microsoft.Samples.Debugging.Native;
 
 namespace Microsoft.Samples.Debugging.MdbgEngine
 {
