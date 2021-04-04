@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-
+using FrameExporter.Utils;
 using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.MdbgEngine;
 using Microsoft.Samples.Tools.Mdbg;
@@ -18,13 +18,15 @@ namespace FrameExporter
         private MDbgProcess dbgProcess = null;
         private MDbgEngine debugger = null;
 
-        private readonly MDbgSourceFileMgr sourceFileMgr = null;
+        private readonly SourceFileMgr sourceFileMgr = null;
         private readonly Dictionary<int, MethodDesc> methods = null;
         private List<Assembly> assemblies = new List<Assembly>();
+        private AssemblyMgr assemblyMgr = new AssemblyMgr();
 
         private DebuggerDriver()
         {
-            sourceFileMgr = new MDbgSourceFileMgr();
+            sourceFileMgr = new SourceFileMgr();
+
             methods = new Dictionary<int, MethodDesc>();
         }
 
@@ -52,6 +54,7 @@ namespace FrameExporter
             // TODO Create AssemblyMgr
             // Load assemblies 
             assemblies.Add(Assembly.LoadFile(m_ProcessToDebug.ExecutablePath));
+            assemblyMgr.BuildAssemblyCache(m_ProcessToDebug.ExecutablePath);
 
             Console.Write($"Get CLR Version of {m_ProcessToDebug.ExecutablePath}: ");
             string version = MdbgVersionPolicy.GetDefaultLaunchVersion(m_ProcessToDebug.ExecutablePath);
@@ -89,7 +92,7 @@ namespace FrameExporter
                     {
                         while (waitHandle.WaitOne() && dbgProcess.Threads.HaveActive)
                         {
-                            ExecutionFrame frame = ReadFrame();
+                            ExecutionFrame frame = ReadFrame(dbgProcess.Threads.Active);
                             if (frame != null) file.WriteLineAsync(frame.ToString());
                             dbgProcess.StepInto(false);
                         }
@@ -105,32 +108,26 @@ namespace FrameExporter
                 Console.WriteLine(e.Message);
             }
         }
-
-        private string GetSourceLine(string path, int lineNumber)
+       
+        private void GetMethodInfoAndArgValues(ExecutionFrame frame, MDbgFrame mdbgFrame)
         {
-            return sourceFileMgr.GetSourceFile(path)[lineNumber];
+            frame.Method = assemblyMgr.GetMethodDesc(mdbgFrame);
+            MDbgValue[] mDbgValues = frame.Method.GetMethodArguments();
+            if (mDbgValues == null) return;
+            frame.LocalVariables = ValueInfoUtils.MDbgValuesToValueInfoArray(mDbgValues);
+
+            // resolve constants
+            ValueInfoUtils.GetValueForNonLitteralValueInfos(assemblyMgr.GetConstants($"{frame.Method.NameSpace}.{frame.Method.ClassName}"), mdbgFrame);
         }
 
-        private async Task<string> GetSourceLineAsync(string path, int lineNumber)
+        private async Task GetMethodInfoAndArgValuesAsync(ExecutionFrame frame, MDbgFrame mdbgFrame)
         {
-            return await Task.Run(() => GetSourceLine(path, lineNumber));
-        }
-        
-        private void LoadMethodsCache(int token, MDbgFrame frame, List<Assembly> assemblies)
-        {
-            if (!methods.ContainsKey(token))
-                methods.Add(token, MethodDescUtils.GetMethodDescInstance(frame, assemblies));
+            await Task.Run(() => GetMethodInfoAndArgValues(frame, mdbgFrame));
         }
 
-        private async Task LoadMethodsCacheAsync(int token, MDbgFrame frame, List<Assembly> assemblies)
-        {
-            await Task.Run(() => LoadMethodsCache(token, frame, assemblies));
-        }
-
-        private ExecutionFrame ReadFrame()
+        private ExecutionFrame ReadFrame(MDbgThread thread)
         {
             ExecutionFrame frame = null;
-            MDbgThread thread = dbgProcess.Threads.Active;
 
             if (thread.CurrentSourcePosition != null)
             {
@@ -146,11 +143,12 @@ namespace FrameExporter
                 // task 4
                 //if (!methods.ContainsKey(token))
                 //    methods.Add(token, MethodDescUtils.GetMethodDescInstance(thread.CurrentFrame, assemblies));
-                Task loadMethodCacheTask = LoadMethodsCacheAsync(token, thread.CurrentFrame, assemblies);
+                //Task loadMethodCacheTask = LoadMethodsCacheAsync(token, thread.CurrentFrame, assemblies);
+                Task methodDescTask = GetMethodInfoAndArgValuesAsync(frame, thread.CurrentFrame);
 
                 // task 1
                 //frame.SourceFileLine = GetSourceLine(frame.SourceFile, frame.SourceFileLineNumber);
-                Task<string> sourceLineTask = GetSourceLineAsync(frame.SourceFile, frame.SourceFileLineNumber);
+                Task<string> sourceLineTask = sourceFileMgr.GetSourceLineAsync(frame.SourceFile, frame.SourceFileLineNumber);
                 
                 // task 2
                 //frame.LocalVariables = ValueInfoUtils.MDbgValuesToValueInfoArray(thread.CurrentFrame.Function.GetActiveLocalVars(thread.CurrentFrame));
@@ -159,12 +157,17 @@ namespace FrameExporter
                 // task 3
                 Task<ValueInfo> exceptionTask = ValueInfoUtils.MDbgValueExceptionToValueInfoAsync(dbgProcess.Threads.Active.CurrentException);
 
-                Task.WaitAll(new Task[] { sourceLineTask, valueInfosTask, loadMethodCacheTask, exceptionTask });
+                Task.WaitAll(new Task[] { sourceLineTask, valueInfosTask, methodDescTask, exceptionTask });
 
                 frame.SourceFileLine = sourceLineTask.Result;
-                frame.LocalVariables = valueInfosTask.Result;
+                   
+                ValueInfo[] valueInfos = new ValueInfo[frame.LocalVariables.Length + valueInfosTask.Result.Length];
+                frame.LocalVariables.CopyTo(valueInfos, 0);
+                valueInfosTask.Result.CopyTo(valueInfos, frame.LocalVariables.Length);
+
+                frame.LocalVariables = valueInfos;
+
                 frame.CurrentException = exceptionTask.Result;
-                frame.Method = methods[token];
 
                 frame.executionTime = (DateTime.Now - startTime).ToString();
             }

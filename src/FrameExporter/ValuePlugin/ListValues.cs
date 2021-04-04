@@ -1,10 +1,13 @@
-﻿using Microsoft.Samples.Debugging.MdbgEngine;
+﻿using FrameExporter.Utils;
+using Microsoft.Samples.Debugging.MdbgEngine;
 
 namespace FrameExporter.ValuePlugin
 {
-    class ListValues
+    public class ListValues : ValuePluginAbstract
     {
-        public static object[] GetValue(MDbgValue value)
+        public new const string handledType = "System.Collections.Generic.List`1";
+
+        public new static object[] GetValue(MDbgValue value)
         {
             if (value.IsNull) return null;
             // we need only to get '_items'

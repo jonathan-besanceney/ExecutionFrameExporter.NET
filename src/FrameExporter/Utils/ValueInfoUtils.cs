@@ -1,140 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Threading.Tasks;
+
 using FrameExporter.ValuePlugin;
+
 using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 using Microsoft.Samples.Debugging.MdbgEngine;
 
-namespace FrameExporter
+namespace FrameExporter.Utils
 {
-    public static class MethodDescUtils
-    {
-        private static char[] nameSeparator = new char[] { '.' };
-
-        private static void SplitMethodFullName(string methodFullName, out string AssemblyName, out string Namespace, out string ClassName, out string MethodName)
-        {
-            AssemblyName = null;
-            Namespace = null;
-            ClassName = null;
-            MethodName = null;
-
-            string[] elements = methodFullName.Split(nameSeparator);
-
-            int max = elements.Length;
-            for (int i = 0; i < max; i++)
-            {
-                if (i <= max - 3)
-                {
-                    AssemblyName += AssemblyName == null ? elements[i] : nameSeparator + elements[i];
-                    Namespace = AssemblyName;
-                }
-                else if (i < max - 2) Namespace = Namespace + nameSeparator.ToString() + elements[i];
-                else if (i == max - 1) MethodName = elements[i];
-                else ClassName = elements[i];
-            }
-        }
-
-        private static MethodInfo GetMethodInfoFromAssemblies(List<Assembly> assemblies, string AssemblyName,  string Namespace, string ClassName, string MethodName, Dictionary<string, string> ParametersInfo)
-        {
-            foreach (Assembly assembly in assemblies)
-            {
-                if (assembly.FullName.StartsWith(AssemblyName))
-                {
-                    foreach(TypeInfo type in assembly.DefinedTypes)
-                    {
-                        if (type.Namespace.Equals(Namespace) && type.Name.Equals(ClassName))
-                        {
-                            foreach(MethodInfo info in type.DeclaredMethods)
-                            {
-                                if (info.Name.Equals(MethodName) && (info.IsSpecialName || IsParameterInfoArrayEquivalent(info.GetParameters(), ParametersInfo)))
-                                {
-                                    return info;
-                                }
-                            }
-                            /*
-                            foreach (MethodInfo info in type.DeclaredConstructors)
-                            {
-                                if (info.Name.Equals(MethodName) && (info.IsSpecialName || IsParameterInfoArrayEquivalent(info.GetParameters(), ParametersInfo)))
-                                {
-                                    return info;
-                                }
-                            }
-                            */
-                        }
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        private static Dictionary<string, string> MDbgValueArrayToParameterNameTypeNameDictionary(MDbgValue[] mDbgValues)
-        {
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-            foreach (MDbgValue mDbgValue in mDbgValues)
-            {
-                parameters.Add(mDbgValue.Name, mDbgValue.TypeName);
-            }
-            return parameters;
-        }
-
-        private static bool IsParameterInfoArrayEquivalent(ParameterInfo[] parameters, Dictionary<string, string> NameTypeDic)
-        {
-            if (parameters.Length != NameTypeDic.Count) return false;
-
-            // comparing in reverse order
-            bool same = true;
-            for (int i = parameters.Length - 1; i >= 0 && same; i--)
-                same = NameTypeDic.ContainsKey(parameters[i].Name) && parameters[i].ParameterType.FullName.Equals(NameTypeDic[parameters[i].Name]);
-
-            return same;
-        }
-
-        private static void CompleteMethodDesc(List<Assembly> assemblies, string fullname, MDbgValue[] arguments, MethodDesc method)
-        {
-            SplitMethodFullName(fullname, out string AssemblyName, out string Namespace, out string ClassName, out string MethodName);
-            method.AssemblyName = AssemblyName;
-            method.NameSpace = Namespace;
-            method.ClassName = ClassName;
-            method.Name = MethodName;
-            Dictionary<string, string> ParametersInfo = MDbgValueArrayToParameterNameTypeNameDictionary(arguments);
-            MethodInfo methodInfo = GetMethodInfoFromAssemblies(assemblies, AssemblyName, Namespace, ClassName, MethodName, ParametersInfo);
-            method.Signature = methodInfo.ToString();
-            method.Attributes = methodInfo.Attributes.ToString();
-            method.ReturnTypeName = methodInfo.ReturnType.FullName;
-        }
-
-        private static async Task CompleteMethodDescAsync(List<Assembly> assemblies, string fullname, MDbgValue[] arguments, MethodDesc method)
-        {
-            await Task.Run(() => CompleteMethodDesc(assemblies, fullname, arguments, method));
-        }
-
-        public static MethodDesc GetMethodDescInstance(MDbgFrame frame, List<Assembly> assemblies)
-        {
-            MethodDesc method = new MethodDesc();
-            method.Token = frame.Function.CorFunction.Token;
-            method.FullName = frame.Function.FullName;
-
-            MDbgValue[] arguments = frame.Function.GetArguments(frame);
-
-            // Parameters Values
-            Task<ValueInfo[]> argumentTasks = ValueInfoUtils.MDbgValuesToValueInfoArrayAsync(arguments);
-
-            // MethodInfo
-            Task completeTask = CompleteMethodDescAsync(assemblies, method.FullName, arguments, method);
-
-            Task.WaitAll(new Task[] { completeTask, argumentTasks });
-
-            method.Arguments = argumentTasks.Result;
-
-            return method;
-        }
-
-
-    }
-
     public static class ValueInfoUtils
     {
         static void PopulateValueInfoStdProperties(ValueInfo valueInfo, MDbgValue mDbgValue)
@@ -145,11 +20,53 @@ namespace FrameExporter
             valueInfo.Name = mDbgValue.Name;
             valueInfo.TypeName = mDbgValue.TypeName;
             valueInfo.Address = mDbgValue.CorValue.Address;
+            //IsLitteral is set to false in ValueInfo class definition
         }
 
         static async Task PopulateValueInfoStdPropertiesAsync(ValueInfo valueInfo, MDbgValue mDbgValue)
         {
             await Task.Run(() => PopulateValueInfoStdProperties(valueInfo, mDbgValue));
+        }
+
+        public static void GetValueForNonLitteralValueInfo(ValueInfo valueInfo, MDbgFrame mDbgFrame)
+        {
+            try
+            {
+                CorValue corValue = mDbgFrame.Function.CorFunction.Class.GetStaticFieldValue(valueInfo.MetadataToken, mDbgFrame.CorFrame);
+                //create MDbgValue
+                valueInfo.Address = corValue.Address;
+                MDbgValue mDbgValue = new MDbgValue(mDbgFrame.Function.Module.Process, valueInfo.Name, corValue);
+                valueInfo.Value = GetValue(mDbgValue);
+                valueInfo.IsNull = mDbgValue.IsNull;
+                valueInfo.IsComplexType = mDbgValue.IsComplexType;
+            }
+            catch(Exception e)
+            {
+            }
+        }
+
+        public static async Task GetValueForNonLitteralValueInfoAsync(ValueInfo valueInfo, MDbgFrame mDbgFrame)
+        {
+            await Task.Run(() => GetValueForNonLitteralValueInfo(valueInfo, mDbgFrame));
+        }
+
+        public static void GetValueForNonLitteralValueInfos(ValueInfo[] valueInfos, MDbgFrame mDbgFrame)
+        {
+            List<Task> valueTasks = new List<Task>();
+            for (int i = 0; i < valueInfos.Length; i++)
+            {
+                // Is it possible to have constants/immutables values here ? If yes, what are the immutables types (string, ...)
+                if (!valueInfos[i].IsLitteral) // && valueInfos[i].Value == null)
+                {
+                    valueTasks.Add(GetValueForNonLitteralValueInfoAsync(valueInfos[i], mDbgFrame));
+                }
+            }
+            Task.WaitAll(valueTasks.ToArray());
+        }
+
+        public static async Task GetValueForNonLitteralValueInfosAsync(ValueInfo[] valueInfos, MDbgFrame mDbgFrame)
+        {
+            await Task.Run(() => GetValueForNonLitteralValueInfos(valueInfos, mDbgFrame));
         }
 
         public static ValueInfo MDbgValueExceptionToValueInfo(MDbgValue mDbgValue)
@@ -180,24 +97,27 @@ namespace FrameExporter
         }
 
         public static async Task<ValueInfo> MDbgValueToValueInfoAsync(MDbgValue mDbgValue)
-        {  
+        {
             return await Task.Run(() => MDbgValueToValueInfo(mDbgValue));
         }
 
         public static ValueInfo[] MDbgValuesToValueInfoArray(MDbgValue[] mDbgValues)
         {
-            ValueInfo[] values = new ValueInfo[mDbgValues.Length];
-            Task<ValueInfo>[] tasks = new Task<ValueInfo>[mDbgValues.Length];
+            List<ValueInfo> values = new List<ValueInfo>();
+            List<Task<ValueInfo>> tasks = new List<Task<ValueInfo>>();
 
             for (int i = 0; i < mDbgValues.Length; i++)
-                tasks[i] = MDbgValueToValueInfoAsync(mDbgValues[i]);
+            {
+                if (mDbgValues[i].Name == "this") continue;
+                tasks.Add(MDbgValueToValueInfoAsync(mDbgValues[i]));
+            }
 
-            Task.WaitAll(tasks);
+            Task.WaitAll(tasks.ToArray());
 
-            for (int i = 0; i < mDbgValues.Length; i++)
-                values[i] = tasks[i].Result;
-            
-            return values;
+            foreach (Task<ValueInfo> task in tasks)
+                values.Add(task.Result);
+
+            return values.ToArray();
         }
 
         public static async Task<ValueInfo[]> MDbgValuesToValueInfoArrayAsync(MDbgValue[] mDbgValues)
@@ -406,14 +326,10 @@ namespace FrameExporter
                 case CorElementType.ELEMENT_TYPE_VAR:
                 case CorElementType.ELEMENT_TYPE_CLASS:
                     // do we know a fast way to get data ?
-                    if (value.TypeName.StartsWith("System.Collections.Generic.LinkedList`1"))
-                    {
-                        return LinkedListValues.GetValue(value);
-                    }
-                    if (value.TypeName.StartsWith("System.Collections.Generic.List`1"))
-                    {
-                        return ListValues.GetValue(value);
-                    }
+                    Func<MDbgValue, object> plugin = RegisteredValuePlugin.GetPlugin(value);
+                    if (plugin != null)
+                        return plugin(value);
+
                     return GetClassValue(value);
 
                 case CorElementType.ELEMENT_TYPE_VALUETYPE:
@@ -458,7 +374,7 @@ namespace FrameExporter
                 retObject = CorValueToObject(value);
                 if (retObject != null) return retObject;
                 else
-                { 
+                {
                     //TODO remove this part after more experimentation
                     CorValue corValue = value.CorValue;
                     CorArrayValue av = corValue.CastToArrayValue();

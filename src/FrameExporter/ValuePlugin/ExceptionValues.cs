@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-
+using FrameExporter.Utils;
 using Microsoft.Samples.Debugging.MdbgEngine;
 
 namespace FrameExporter.ValuePlugin
 {
-    class ExceptionValues
+    public class ExceptionValues : ValuePluginAbstract
     {
         /**
          * Exception standard properties :
@@ -38,7 +38,7 @@ namespace FrameExporter.ValuePlugin
          * 
          **/
 
-        public static Dictionary<string, object> GetValue(MDbgValue exception)
+        public new static Dictionary<string, object> GetValue(MDbgValue exception)
         {
             if (exception.IsNull) return null;
 

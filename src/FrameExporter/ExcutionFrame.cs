@@ -1,4 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using System.Collections.Generic;
+using System.Reflection;
+using Microsoft.Samples.Debugging.MdbgEngine;
+using Newtonsoft.Json;
 
 
 namespace FrameExporter
@@ -6,12 +9,16 @@ namespace FrameExporter
     public class ValueInfo
     {
         public long Address { get; set; }
+        public int MetadataToken { get; set; } = 0;
         public string Name { get; set; }
         public string TypeName { get; set; }
         public bool IsArrayType { get; set; }
         public bool IsComplexType { get; set; }
         public bool IsNull { get; set; }
+        public bool IsLitteral { get; set; } = false;
         public object Value { get; set; }
+
+        //public string executionTime { get; set; }
     }
 
     public class MethodDesc
@@ -25,7 +32,13 @@ namespace FrameExporter
         public string Name { get; set; }
         public string ReturnTypeName { get; set; }
         public string Signature { get; set; }
-        public ValueInfo[] Arguments { get; set; }
+
+        //public string executionTime { get; set; }
+
+        // Don't serialize these
+        private MDbgValue[] args;
+        public MDbgValue[] GetMethodArguments() { return args; }
+        public void SetMethodArguments(MDbgValue[] value) { args = value; }
     }
 
     public class ExecutionFrame
@@ -43,7 +56,7 @@ namespace FrameExporter
         public MethodDesc Method { get; set; }
         public ValueInfo[] LocalVariables { get; set; }
 
-        public ValueInfo[] GlobalVariables { get; set; }
+        public ValueInfo[] ConstantVariables { get; set; }
         public ValueInfo CurrentException { get; set; }
 
         public string executionTime { get; set; }

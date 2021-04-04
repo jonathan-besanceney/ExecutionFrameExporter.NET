@@ -1,17 +1,19 @@
 ﻿using System.Threading.Tasks;
-
+using FrameExporter.Utils;
 using Microsoft.Samples.Debugging.MdbgEngine;
 
 namespace FrameExporter.ValuePlugin
 {
-    class LinkedListValues
+    public class LinkedListValues : ValuePluginAbstract
     {
+        public new const string handledType = "System.Collections.Generic.LinkedList`1";
+
         private static async Task<object> GetValueAsync(MDbgValue item)
         {
             return await Task.Run(() => ValueInfoUtils.GetValue(item));
         }
 
-        public static object[] GetValue(MDbgValue value)
+        public new static object[] GetValue(MDbgValue value)
         {
             if (value.IsNull) return null;
 
