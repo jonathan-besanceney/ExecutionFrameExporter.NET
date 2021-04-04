@@ -1,20 +1,20 @@
 # ExecutionFrameExporter.NET
 
-Based on the Microsoft NET Framework Command-Line Debugger Sample (MDbg Sample), ExecutionFrameExporter.NET initiates a debugging session on a .NET application to exports all execution frames.
+Based on the Microsoft NET Framework Command-Line Debugger Sample (MDbg Sample), ExecutionFrameExporter.NET initiates a debugging session on a .NET application to exports all execution frames step by step.
 
 ## Goals
 
-Debugging is often a time consumming activity. While some bugs are relatively easy to catch, others are more insiduous. How to demontrates a race condition on an 1MLoc+ app ? Where does this uncaught exception come from ? Oh, I forgot to step in, I need to start over again... (that's usually at this time the management calls to get some news you don't have)
+Debugging is often a time consumming activity. While some bugs are relatively easy to catch, others are more insiduous. How to demontrates a race condition on an 1MLoc+ app ? Where does this uncaught exception come from ? Oh, I forgot to step in, I need to start over again... 
 
-The main idea behind the execution frame exporter is a driven "Step-In" debugging tool, retrieving all useful information from the current execution frame in all active threads (MT implementation to be done):
+The main idea behind the execution frame exporter is a driven "Step-In" debugging tool, retrieving all useful information from the current execution frame in all active threads (MT implementation on progress):
 * source line and position 
 * current exception
 * current method and its parameters
 * local variable values
-* global variable values (implementation in progress)
+* global variable values
 
 These exported frames should help to :
-* have a complete history of program execution
+* have a complete history of program executions or record test cases
 * create method execution trees
 * create execution and sequence diagrams
 * locate origin of uncaught exception
