@@ -1,4 +1,4 @@
-﻿namespace FrameExporter.Utils
+﻿namespace Microsoft.Samples.Tools.Mdbg
 {
     public static class Common
     {

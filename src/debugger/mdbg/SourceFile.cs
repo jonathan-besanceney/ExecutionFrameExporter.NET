@@ -30,18 +30,10 @@ namespace Microsoft.Samples.Tools.Mdbg
             Task<MDbgSourceFile>[] tasks = new Task<MDbgSourceFile>[sourceTasks.Count];
             sourceTasks.Values.CopyTo(tasks, 0);
             Task.WaitAll(tasks);
-            foreach(string key in sourceTasks.Keys)
+            foreach (string key in sourceTasks.Keys)
             {
                 m_sourceCache.Add(key, sourceTasks[key].Result);
             }
-        }
-
-        private static bool EndsWithAny(string f, string[] matches)
-        {
-            foreach (string match in matches)
-                if (f.EndsWith(match))
-                    return true;
-            return false;
         }
 
         private void LoadSourceTree(string folder, Dictionary<string, Task<MDbgSourceFile>> sourceTasks)
@@ -52,7 +44,7 @@ namespace Microsoft.Samples.Tools.Mdbg
 
                 foreach (string f in Directory.GetFiles(folder))
                 {
-                    if (EndsWithAny(f, extensions))
+                    if (Common.EndsWithAny(f, extensions))
                     {
                         Console.WriteLine(f);
                         Task<MDbgSourceFile> sourceFileTask = GetMDbsSourceFileInstanceAsync(f);
@@ -62,11 +54,11 @@ namespace Microsoft.Samples.Tools.Mdbg
 
                 foreach (string d in Directory.GetDirectories(folder))
                 {
-                    if (!EndsWithAny(d, excludedFolders))
+                    if (!Common.EndsWithAny(d, excludedFolders))
                         LoadSourceTree(d, sourceTasks);
                 }
             }
-            catch (System.Exception excpt)
+            catch (Exception excpt)
             {
                 Console.WriteLine(excpt.Message);
             }
@@ -77,13 +69,23 @@ namespace Microsoft.Samples.Tools.Mdbg
             return await Task.Run(() => new MDbgSourceFile(source));
         }
 
+        public string GetSourceLine(string path, int lineNumber)
+        {
+            return GetSourceFile(path)[lineNumber];
+        }
+
+        public async Task<string> GetSourceLineAsync(string path, int lineNumber)
+        {
+            return await Task.Run(() => GetSourceLine(path, lineNumber));
+        }
+
         public IMDbgSourceFile GetSourceFile(string path)
         {
             string s = string.Intern(path);
 
-            if ( !m_sourceCache.ContainsKey(s) )
+            if (!m_sourceCache.ContainsKey(s))
                 m_sourceCache.Add(s, new MDbgSourceFile(s));
-            
+
             return m_sourceCache[s];
         }
 
@@ -111,41 +113,41 @@ namespace Microsoft.Samples.Tools.Mdbg
             {
                 Initialize();
             }
-            catch(FileNotFoundException)
+            catch (FileNotFoundException)
             {
-                throw new MDbgShellException("Could not find source: "+m_path);
+                throw new MDbgShellException("Could not find source: " + m_path);
             }
         }
-        
+
         public string Path
-        { 
+        {
             get
             {
                 return m_path;
             }
         }
-        
-        public string this[ int lineNumber ]
+
+        public string this[int lineNumber]
         {
             get
             {
-                if( m_lines == null )
+                if (m_lines == null)
                 {
                     Initialize();
                 }
-                if( (lineNumber<1) || (lineNumber>m_lines.Count) )
+                if ((lineNumber < 1) || (lineNumber > m_lines.Count))
                     throw new MDbgShellException(string.Format("Could not retrieve line {0} from file {1}.",
                                                                lineNumber, this.Path));
 
-                return (string) m_lines[lineNumber-1];
+                return (string)m_lines[lineNumber - 1];
             }
         }
-        
+
         public int Count
         {
             get
             {
-                if( m_lines == null )
+                if (m_lines == null)
                 {
                     Initialize();
                 }
@@ -153,17 +155,17 @@ namespace Microsoft.Samples.Tools.Mdbg
             }
         }
 
-        protected  void Initialize()
+        protected void Initialize()
         {
             StreamReader sr = null;
             try
-            {                
+            {
                 // Encoding.Default doesn’t port between machines, but it's used just in case the source isn’t Unicode
                 sr = new StreamReader(m_path, System.Text.Encoding.Default, true);
                 m_lines = new ArrayList();
-                
+
                 string s = sr.ReadLine();
-                while(s!=null)
+                while (s != null)
                 {
                     m_lines.Add(s);
                     s = sr.ReadLine();
@@ -171,7 +173,7 @@ namespace Microsoft.Samples.Tools.Mdbg
             }
             finally
             {
-                if( sr!=null )
+                if (sr != null)
                     sr.Close(); // free resources in advance
             }
         }

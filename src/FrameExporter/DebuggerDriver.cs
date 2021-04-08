@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using FrameExporter.OutputPlugin;
 using FrameExporter.Utils;
 using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.MdbgEngine;
@@ -18,15 +19,13 @@ namespace FrameExporter
         private MDbgProcess dbgProcess = null;
         private MDbgEngine debugger = null;
 
-        private readonly SourceFileMgr sourceFileMgr = null;
+        private static MDbgSourceFileMgr sourceFileMgr = new MDbgSourceFileMgr();
         private readonly Dictionary<int, MethodDesc> methods = null;
-        private List<Assembly> assemblies = new List<Assembly>();
-        private AssemblyMgr assemblyMgr = new AssemblyMgr();
+        //private List<Assembly> assemblies = new List<Assembly>();
+        private static AssemblyMgr assemblyMgr = new AssemblyMgr();
 
         private DebuggerDriver()
         {
-            sourceFileMgr = new SourceFileMgr();
-
             methods = new Dictionary<int, MethodDesc>();
         }
 
@@ -51,9 +50,7 @@ namespace FrameExporter
             Console.WriteLine("Building source cache");
             sourceFileMgr.BuildSourceCache(m_ProcessToDebug.SourcePath);
 
-            // TODO Create AssemblyMgr
             // Load assemblies 
-            assemblies.Add(Assembly.LoadFile(m_ProcessToDebug.ExecutablePath));
             assemblyMgr.BuildAssemblyCache(m_ProcessToDebug.ExecutablePath);
 
             Console.Write($"Get CLR Version of {m_ProcessToDebug.ExecutablePath}: ");
@@ -88,13 +85,11 @@ namespace FrameExporter
                 // entry point
                 using (WaitHandle waitHandle = dbgProcess.Go())
                 {
-                    using (StreamWriter file = new StreamWriter("debug.log"))
+                    using (IOutputPlugin output = new FileOutput("debug.log"))
                     {
                         while (waitHandle.WaitOne() && dbgProcess.Threads.HaveActive)
                         {
-                            ExecutionFrame frame = ReadFrame(dbgProcess.Threads.Active);
-                            if (frame != null) file.WriteLineAsync(frame.ToString());
-                            dbgProcess.StepInto(false);
+                            ReadFrame(dbgProcess, dbgProcess.Threads.Active, output);
                         }
                     }
                 }
@@ -109,7 +104,7 @@ namespace FrameExporter
             }
         }
        
-        private void GetMethodInfoAndArgValues(ExecutionFrame frame, MDbgFrame mdbgFrame)
+        private static void GetMethodInfoAndArgValues(ExecutionFrame frame, MDbgFrame mdbgFrame)
         {
             frame.Method = assemblyMgr.GetMethodDesc(mdbgFrame);
             MDbgValue[] mDbgValues = frame.Method.GetMethodArguments();
@@ -120,12 +115,12 @@ namespace FrameExporter
             ValueInfoUtils.GetValueForNonLitteralValueInfos(assemblyMgr.GetConstants($"{frame.Method.NameSpace}.{frame.Method.ClassName}"), mdbgFrame);
         }
 
-        private async Task GetMethodInfoAndArgValuesAsync(ExecutionFrame frame, MDbgFrame mdbgFrame)
+        private static async Task GetMethodInfoAndArgValuesAsync(ExecutionFrame frame, MDbgFrame mdbgFrame)
         {
             await Task.Run(() => GetMethodInfoAndArgValues(frame, mdbgFrame));
         }
 
-        private ExecutionFrame ReadFrame(MDbgThread thread)
+        private static void ReadFrame(MDbgProcess process, MDbgThread thread, IOutputPlugin output)
         {
             ExecutionFrame frame = null;
 
@@ -140,22 +135,10 @@ namespace FrameExporter
                 frame.SourceFileLineNumber = thread.CurrentSourcePosition.Line;
                 frame.SourceFileColumnNumber = thread.CurrentSourcePosition.StartColumn;
 
-                // task 4
-                //if (!methods.ContainsKey(token))
-                //    methods.Add(token, MethodDescUtils.GetMethodDescInstance(thread.CurrentFrame, assemblies));
-                //Task loadMethodCacheTask = LoadMethodsCacheAsync(token, thread.CurrentFrame, assemblies);
                 Task methodDescTask = GetMethodInfoAndArgValuesAsync(frame, thread.CurrentFrame);
-
-                // task 1
-                //frame.SourceFileLine = GetSourceLine(frame.SourceFile, frame.SourceFileLineNumber);
                 Task<string> sourceLineTask = sourceFileMgr.GetSourceLineAsync(frame.SourceFile, frame.SourceFileLineNumber);
-                
-                // task 2
-                //frame.LocalVariables = ValueInfoUtils.MDbgValuesToValueInfoArray(thread.CurrentFrame.Function.GetActiveLocalVars(thread.CurrentFrame));
                 Task<ValueInfo[]> valueInfosTask = ValueInfoUtils.MDbgValuesToValueInfoArrayAsync(thread.CurrentFrame.Function.GetActiveLocalVars(thread.CurrentFrame));
-
-                // task 3
-                Task<ValueInfo> exceptionTask = ValueInfoUtils.MDbgValueExceptionToValueInfoAsync(dbgProcess.Threads.Active.CurrentException);
+                Task<ValueInfo> exceptionTask = ValueInfoUtils.MDbgValueExceptionToValueInfoAsync(thread.CurrentException);
 
                 Task.WaitAll(new Task[] { sourceLineTask, valueInfosTask, methodDescTask, exceptionTask });
 
@@ -166,16 +149,17 @@ namespace FrameExporter
                 valueInfosTask.Result.CopyTo(valueInfos, frame.LocalVariables.Length);
 
                 frame.LocalVariables = valueInfos;
-
                 frame.CurrentException = exceptionTask.Result;
-
                 frame.executionTime = (DateTime.Now - startTime).ToString();
+
+                output.SendFrameAsync(frame);
+
+                process.StepInto(false);
             }
             else
             {
-                dbgProcess.StepOut().WaitOne();
+                process.StepOut().WaitOne();
             }
-            return frame;
         }
 
         public void Dispose()

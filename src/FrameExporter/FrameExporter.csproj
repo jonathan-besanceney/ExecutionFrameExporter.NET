@@ -58,12 +58,11 @@
     <Compile Include="DebuggerDriver.cs" />
     <Compile Include="ExcutionFrame.cs" />
     <Compile Include="OutputPlugin\FileOutput.cs" />
+    <Compile Include="OutputPlugin\IOutputPlugin.cs" />
     <Compile Include="ProcessToDebug.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utils\AssemblyMgr.cs" />
-    <Compile Include="Utils\Common.cs" />
-    <Compile Include="Utils\SourceFileMgr.cs" />
     <Compile Include="Utils\ValueInfoUtils.cs" />
     <Compile Include="ValuePlugin\ValuePluginAbstract.cs" />
     <Compile Include="ValuePlugin\ExceptionValues.cs" />
