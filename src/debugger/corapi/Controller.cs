@@ -63,7 +63,7 @@ namespace Microsoft.Samples.Debugging.CorDebug
             return !(queued == 0);
         }
 
-        /** Enumerate over all threads in active in the process. */
+        /** Enumerate over all threads active in the process. */
         public IEnumerable Threads
         {
             get 

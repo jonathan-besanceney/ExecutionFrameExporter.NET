@@ -28,7 +28,7 @@ namespace FrameExporter.Utils
             await Task.Run(() => PopulateValueInfoStdProperties(valueInfo, mDbgValue));
         }
 
-        public static void GetValueForNonLitteralValueInfo(ValueInfo valueInfo, MDbgFrame mDbgFrame)
+        public static void GetStaticValueInfo(ValueInfo valueInfo, MDbgFrame mDbgFrame)
         {
             try
             {
@@ -40,33 +40,32 @@ namespace FrameExporter.Utils
                 valueInfo.IsNull = mDbgValue.IsNull;
                 valueInfo.IsComplexType = mDbgValue.IsComplexType;
             }
-            catch(Exception e)
-            {
-            }
+            catch { }
         }
 
-        public static async Task GetValueForNonLitteralValueInfoAsync(ValueInfo valueInfo, MDbgFrame mDbgFrame)
+        public static async Task GetStaticValueInfoAsync(ValueInfo valueInfo, MDbgFrame mDbgFrame)
         {
-            await Task.Run(() => GetValueForNonLitteralValueInfo(valueInfo, mDbgFrame));
+            await Task.Run(() => GetStaticValueInfo(valueInfo, mDbgFrame));
         }
 
-        public static void GetValueForNonLitteralValueInfos(ValueInfo[] valueInfos, MDbgFrame mDbgFrame)
+        public static void GetStaticValueInfos(ValueInfo[] valueInfos, MDbgFrame mDbgFrame)
         {
+            if (valueInfos == null) return;
             List<Task> valueTasks = new List<Task>();
             for (int i = 0; i < valueInfos.Length; i++)
             {
                 // Is it possible to have constants/immutables values here ? If yes, what are the immutables types (string, ...)
                 if (!valueInfos[i].IsLitteral) // && valueInfos[i].Value == null)
                 {
-                    valueTasks.Add(GetValueForNonLitteralValueInfoAsync(valueInfos[i], mDbgFrame));
+                    valueTasks.Add(GetStaticValueInfoAsync(valueInfos[i], mDbgFrame));
                 }
             }
             Task.WaitAll(valueTasks.ToArray());
         }
 
-        public static async Task GetValueForNonLitteralValueInfosAsync(ValueInfo[] valueInfos, MDbgFrame mDbgFrame)
+        public static async Task GetStaticValueInfosAsync(ValueInfo[] valueInfos, MDbgFrame mDbgFrame)
         {
-            await Task.Run(() => GetValueForNonLitteralValueInfos(valueInfos, mDbgFrame));
+            await Task.Run(() => GetStaticValueInfos(valueInfos, mDbgFrame));
         }
 
         public static ValueInfo MDbgValueExceptionToValueInfo(MDbgValue mDbgValue)
@@ -86,22 +85,25 @@ namespace FrameExporter.Utils
             return await Task.Run(() => MDbgValueExceptionToValueInfo(mDbgValue));
         }
 
-        public static ValueInfo MDbgValueToValueInfo(MDbgValue mDbgValue)
+        public static ValueInfo MDbgValueToValueInfo(MDbgValue mDbgValue, bool methodArgs = false)
         {
             ValueInfo value = new ValueInfo();
-            Task populateTask = PopulateValueInfoStdPropertiesAsync(value, mDbgValue);
+            value.IsMethodArgument = methodArgs;
+            /*Task populateTask = PopulateValueInfoStdPropertiesAsync(value, mDbgValue);
             Task<object> valueTask = GetValueAsync(mDbgValue);
             Task.WaitAll(new Task[] { populateTask, valueTask });
-            value.Value = valueTask.Result;
+            value.Value = valueTask.Result;*/
+            PopulateValueInfoStdProperties(value, mDbgValue);
+            value.Value = GetValue(mDbgValue);
             return value;
         }
 
-        public static async Task<ValueInfo> MDbgValueToValueInfoAsync(MDbgValue mDbgValue)
+        public static async Task<ValueInfo> MDbgValueToValueInfoAsync(MDbgValue mDbgValue, bool methodArgs = false)
         {
-            return await Task.Run(() => MDbgValueToValueInfo(mDbgValue));
+            return await Task.Run(() => MDbgValueToValueInfo(mDbgValue, methodArgs));
         }
 
-        public static ValueInfo[] MDbgValuesToValueInfoArray(MDbgValue[] mDbgValues)
+        public static ValueInfo[] MDbgValuesToValueInfoArray(MDbgValue[] mDbgValues, bool methodArgs = false)
         {
             List<ValueInfo> values = new List<ValueInfo>();
             List<Task<ValueInfo>> tasks = new List<Task<ValueInfo>>();
@@ -109,7 +111,7 @@ namespace FrameExporter.Utils
             for (int i = 0; i < mDbgValues.Length; i++)
             {
                 if (mDbgValues[i].Name == "this") continue;
-                tasks.Add(MDbgValueToValueInfoAsync(mDbgValues[i]));
+                tasks.Add(MDbgValueToValueInfoAsync(mDbgValues[i], methodArgs));
             }
 
             Task.WaitAll(tasks.ToArray());
@@ -120,9 +122,9 @@ namespace FrameExporter.Utils
             return values.ToArray();
         }
 
-        public static async Task<ValueInfo[]> MDbgValuesToValueInfoArrayAsync(MDbgValue[] mDbgValues)
+        public static async Task<ValueInfo[]> MDbgValuesToValueInfoArrayAsync(MDbgValue[] mDbgValues, bool methodArgs = false)
         {
-            return await Task.Run(() => MDbgValuesToValueInfoArray(mDbgValues));
+            return await Task.Run(() => MDbgValuesToValueInfoArray(mDbgValues, methodArgs));
         }
 
         public static bool IsCircularReference(MDbgValue value)

@@ -72,7 +72,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         }
 
         /// <summary>
-        /// Function returns mdbg frame for the thred it was created for. 
+        /// Function returns mdbg frame for the thread it was created for. 
         /// </summary>
         /// <param name="index">index of the frame. The leaf-most frame is indexed with 0.</param>
         /// <returns>the object representing frame</returns>
@@ -89,7 +89,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                 // Need to check for out-of-range 
                 if (index < 0)
                 {
-                    throw new ArgumentOutOfRangeException("index");
+                    throw new ArgumentOutOfRangeException($"GetFrame(index: {index})");
                 }
 
                 // Grow the cache until it is large enough to contain the index.

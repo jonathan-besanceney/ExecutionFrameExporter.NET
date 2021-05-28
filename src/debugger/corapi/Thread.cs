@@ -352,14 +352,21 @@ namespace Microsoft.Samples.Debugging.CorDebug
             }
 
             ICorDebugStackWalk s = null;
-            th3.CreateStackWalk (out s);
-            if (type == CorStackWalkType.PureV3StackWalk)
+            try
             {
-                return new CorStackWalk(s, this);
+                th3.CreateStackWalk(out s);
+                if (type == CorStackWalkType.PureV3StackWalk)
+                {
+                    return new CorStackWalk(s, this);
+                }
+                else
+                {
+                    return new CorStackWalkEx(s, this);
+                }
             }
-            else
+            catch (Exception e)
             {
-                return new CorStackWalkEx(s, this);
+                return null;
             }
         }
         public CorStackWalk CreateStackWalk()
@@ -419,7 +426,6 @@ namespace Microsoft.Samples.Debugging.CorDebug
         }
 
         private ICorDebugThread m_th;
-
     } /* class Thread */
 
 

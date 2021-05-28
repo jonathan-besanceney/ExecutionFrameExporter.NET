@@ -3,7 +3,7 @@
 // 
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
-#undef TRACE
+//#undef TRACE
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -215,10 +215,13 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         {
             if (null == debugger)
                 throw new ArgumentNullException();
+
+            Trace.WriteLine("RegisterDebuggerForCleanup lock(m_CleanupList)");
             lock (m_CleanupList)
             {
                 m_CleanupList.Add(debugger, false);
             }
+            Trace.WriteLine("RegisterDebuggerForCleanup un-lock(m_CleanupList)");
         }
 
         /// <summary>
@@ -231,6 +234,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// </remarks>
         public void FreeStaleUnmanagedResources()
         {
+            Trace.WriteLine("FreeStaleUnmanagedResources lock(m_CleanupList)");
             lock (m_CleanupList)
             {
 
@@ -250,6 +254,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                     }
                 }
             }
+            Trace.WriteLine("FreeStaleUnmanagedResources un-lock(m_CleanupList)");
         }
 
         // (key, value)
@@ -267,6 +272,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// <remarks>This will update the Active process to the current process.</remarks>
         internal int RegisterProcess(MDbgProcess process)
         {
+            Trace.WriteLine("RegisterProcess lock(m_items)");
             lock (m_items)
             {
                 m_items.Add(process);
@@ -274,8 +280,10 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
 
                 // We don't fire the ProcessAdded event yet because we don't yet have a valid CorProcess object.
                 // We'll fire the event when we initialize the callbacks.
-                return m_freeProcessNumber++;
+                
             }
+            Trace.WriteLine("RegisterProcess un-lock(m_items)");
+            return m_freeProcessNumber++;
         }
 
         // Fired once process has an underlying CorProcess object.
@@ -324,7 +332,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                     }
                 }
             }
-
+            Trace.WriteLine("DeleteProcess lock(m_items)");
             lock (m_CleanupList)
             {
                 // We may need to call IcorDebug::Terminate. However, we can't call that on a callback thread,
@@ -338,6 +346,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                     }
                 }
             }
+            Trace.WriteLine("DeleteProcess un-lock(m_items)");
         }
 
         private MDbgEngine m_engine;
@@ -591,6 +600,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         // How many times we need to call ICorDebugProcess::Continue() to resume
         // the process. When the process is running free, this is 0. 
         int m_stopCount = 0;
+        private const int MAX_RETRY = 10;
 
         /// <summary>
         /// Implementation of IStopGoController.MarkAsStopped.
@@ -623,19 +633,33 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// </summary>
         public void Continue()
         {
+            m_process.ThreadCreatedStopEvent.WaitOne();
             if (m_stopCount == 0)
             {
-                // we are probably running -- no Continue should be issued
-                throw new InvalidOperationException();
+                int i = 0;
+                while (m_stopCount == 0 && i < MAX_RETRY)
+                {
+                    Thread.Sleep(100);
+                    i++;
+                }
+                if (m_stopCount == 0)
+                {
+                    Trace.WriteLine($"!! V2StopGoController.Continue({m_stopCount})");
+                    // we are probably running -- no Continue should be issued
+                    //throw new InvalidOperationException();
+                    m_process.Unlock();
+                    return;
+                }
             }
             // Debug.Assert(!IsRunning); // struggles on first fake continue
 
             // this is because when we do AsyncStop and hit breakpoint at the same time we want to be sure that
             // we continue when we want to continue.
-            Trace.WriteLine("ReallyContinueProcess(" + m_stopCount + ")");
+            Trace.WriteLine($"V2StopGoController.Continue({m_stopCount})");
 
             while (m_stopCount > 0)
             {
+                Trace.WriteLine($"V2StopGoController.Continue: {m_stopCount}");
                 CorProcess.Continue(false);
                 m_stopCount--;
             }
@@ -676,6 +700,8 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         // Do common initiliazation and add to the process collection.
         void CommonInit(MDbgEngine engine)
         {
+            m_activeStepper = new Dictionary<CorThread, CorStepper>();
+
             Debug.Assert(engine != null);
             if (engine == null)
                 throw new ArgumentException("Value cannot be null.", "engine");
@@ -984,6 +1010,20 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             get
             {
                 return m_stopEvent;
+            }
+        }
+
+        internal void Unlock()
+        {
+
+            m_stopEvent.Set();
+        }
+
+        public WaitHandle ThreadCreatedStopEvent
+        {
+            get
+            {
+                return m_threadCreatedStopEvent;
             }
         }
 
@@ -1396,15 +1436,17 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// Once the stepper is set, a Go() command needs to be called.
         /// The 'active stepper' is also exclusive with registering a custom stepper.
         /// </summary>
-        public void SetActiveStepper(CorStepper activeStepper)
+        public void SetActiveStepper(CorStepper activeStepper, CorThread corThread = null)
         {
+            if (corThread == null) corThread = Threads.Active.CorThread;
+            if (!m_activeStepper.ContainsKey(corThread)) m_activeStepper.Add(corThread, null);
             // we are not interested in finishing old step.
-            if (m_activeStepper != null)
+            if (m_activeStepper[corThread] != null)
             {
-                m_activeStepper.Deactivate();
+                m_activeStepper[corThread].Deactivate();
             }
 
-            m_activeStepper = activeStepper;
+            m_activeStepper[corThread] = activeStepper;
         }
 
         /// <summary>
@@ -1415,6 +1457,12 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         public WaitHandle StepOver(bool stepNativeCode)
         {
             StepImpl(stepNativeCode, StepperType.Over);
+            return StopEvent;
+        }
+
+        public WaitHandle StepOver(MDbgThread t, bool stepNativeCode)
+        {
+            StepImpl(t, stepNativeCode, StepperType.Over);
             return StopEvent;
         }
 
@@ -1430,6 +1478,18 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         }
 
         /// <summary>
+        /// Have the Thread Step Into.
+        /// </summary>
+        /// <param name="thread">Thread to Step Into</param>
+        /// <param name="stepNativeCode">false to step source lines, true to single step instructions.</param>
+        /// <returns>A WaitHandle for the Stop event.</returns>
+        public WaitHandle StepInto(MDbgThread thread, bool stepNativeCode)
+        {
+            StepImpl(thread, stepNativeCode, StepperType.In);
+            return StopEvent;
+        }
+
+        /// <summary>
         /// Have the Process Step Out.
         /// </summary>
         /// <returns>A WaitHandle for the Stop event.</returns>
@@ -1439,6 +1499,15 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             return StopEvent;
         }
 
+        /// <summary>
+        /// Have the Thread Step Out.
+        /// </summary>
+        /// <returns>A WaitHandle for the Stop event.</returns>
+        public WaitHandle StepOut(MDbgThread thread)
+        {
+            StepImpl(thread, false, StepperType.Out);
+            return StopEvent;
+        }
 
         #endregion // Stepping Helpers
 
@@ -1448,6 +1517,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// <returns>A WaitHandle for the Stop event.</returns>
         public WaitHandle AsyncStop()
         {
+            Trace.WriteLine("AsyncStop lock(this)");
             lock (this)
             {
                 // we need to check if m_corProcess!=null. IsAlive is doing that.
@@ -1463,6 +1533,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                 // Notify the eventing pipeline to stop.
                 m_stopGo.AsyncBreak();
             }
+            Trace.WriteLine("AsyncStop un-lock(this)");
 
             CorThread activeThread = null;
 
@@ -2260,10 +2331,22 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             ReallyContinueProcess();
         }
 
-        private void ReallyContinueProcess()
+        private void StepImpl(MDbgThread thread, bool stepNativeCode, StepperType type, bool reallyContinue = false)
+        {
+            EnsureCanExecute("stepping");
+
+            StepperDescriptor s = StepperDescriptor.CreateSourceLevelStep(this, thread, type, stepNativeCode);
+            CorStepper stepper = s.Step();
+            stepper.SetJmcStatus(true);
+            SetActiveStepper(stepper, thread.CorThread);
+            if (reallyContinue) ReallyContinueProcess();
+        }
+
+        public void ReallyContinueProcess()
         {
             // we need to protect m_stopCount from running too many times
             // when m_stopCount is increased in InternalRuntimeIsStopped.
+            Trace.WriteLine("ReallyContinueProcess lock(this)");
             lock (this)
             {
                 // we need to check if m_corProcess!=null. IsAlive is doing that.
@@ -2289,6 +2372,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                 // shell. Else it will look like a superflous continue.
                 this.m_stopGo.Continue();
             } // lock
+            Trace.WriteLine("ReallyContinueProcess un-lock(this)");
         }
 
 
@@ -2300,6 +2384,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             // just updating the MdbgProcess object to reflect that. So no
             // operations are needed on the underlying event pipeline to stop
             // the debuggee. (eg, don't need to call ICorDebugProcess.Stop).
+            Trace.WriteLine("InternalSignalRuntimeIsStopped lock(this)");
             lock (this)
             {
                 // we need to be very carefull here. Debugger API is not reentrant.
@@ -2308,7 +2393,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                 // When we do async-break we are calling AsyncStop() method from another thread, which
                 // is calling InternalSignalRuntimeIsStopped. Therefore we can be running this function
                 // from async-break thread and from managed callback thread. Because this method is
-                // calling DebuggerAPI and functions there are not reentrant, bad thinkgs are happening.
+                // calling DebuggerAPI and functions there are not reentrant, bad things are happening.
                 Trace.WriteLine("InternalSignalRuntimeIsStopped (" + stopReason + ")");
 
                 // Normally, this method is called when the CLR is already stopped but the
@@ -2343,13 +2428,17 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
 
                             Trace.WriteLine("Making another step because of special line number (0xfeefee)");
 
-                            StepImpl(false, StepperType.Over);
+                            StepImpl(t, false, StepperType.Over, true); // possible collision with NextStep. Will Continue unlock all threads at once ?
                             return; // we will be called again
                         }
                     }
                     catch (MDbgNoCurrentFrameException)
                     {
                         // if we don't have current frame, let's ignore it.
+                        Trace.WriteLine("Making another step because of MDbgNoCurrentFrameException");
+
+                        StepImpl(t, false, StepperType.Out, true); // possible collision with NextStep. Will Continue unlock all threads at once ?
+                        return;
                     }
                 }
                 else
@@ -2368,14 +2457,15 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                 Thread.Sleep(100);
 
                 // we are not interested in completing step
-                if (this.m_activeStepper != null)
+                if (activeThread != null && this.m_activeStepper.ContainsKey(activeThread) && this.m_activeStepper[activeThread] != null)
                 {
                     try
                     {
-                        this.m_activeStepper.Deactivate();
+                        this.m_activeStepper[activeThread].Deactivate();
                     }
-                    catch (COMException)
+                    catch (COMException e)
                     {
+                        Trace.WriteLine($"InternalSignalRuntimeIsStopped Exception: {e.Message}");
                         // let's ignore if we cannot deactivate the stepper
                         // This can happen in cases where the app finishes
                         // (we receive ExitProcess callback) but we have outstanding
@@ -2383,10 +2473,10 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                     }
                 }
 
-
                 m_stopCounter = g_stopCounter++;
                 m_stopEvent.Set();
             }
+            Trace.WriteLine("InternalSignalRuntimeIsStopped un-lock(this)");
         }
         // This is called after CreateProcess, Attach, or any other simalar function
         private void InitDebuggerCallbacks()
@@ -2437,6 +2527,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         // Cleans up the process's resources. This may be called on any thread (including callback threads). 
         private void CleanAfterProcessExit()
         {
+            Trace.WriteLine("CleanAfterProcessExit lock(this)");
             lock (this)
             {
                 // synchronize with ReallyContinue 
@@ -2456,31 +2547,36 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
 
                 m_engine.Processes.DeleteProcess(this);
             }
+            Trace.WriteLine("CleanAfterProcessExit un-lock(this)");
         }
 
         private bool InternalHandleRawMode(ManagedCallbackType callbackType, CorEventArgs callbackArgs)
         {
-            lock (this)
+
+            switch (RawModeType)
             {
-                switch (RawModeType)
-                {
-                    case RawMode.None:
-                        return false;
-                    case RawMode.AlwaysStop:
+                case RawMode.None:
+                    return false;
+                case RawMode.AlwaysStop:
+                    Trace.WriteLine("InternalHandleRawMode lock(this)");
+                    lock (this)
+                    {
                         callbackArgs.Continue = false;
                         m_stopReason = new RawModeStopReason(callbackType, callbackArgs);
 
                         m_stopGo.MarkAsStopped();
                         m_stopCounter = g_stopCounter++;
                         m_stopEvent.Set();
-                        return true;
-                    case RawMode.NeverStop:
-                        return true;
-                    default:
-                        Debug.Assert(false);
-                        return false;
-                }
+                    }
+                    Trace.WriteLine("InternalHandleRawMode un-lock(this)");
+                    return true;
+                case RawMode.NeverStop:
+                    return true;
+                default:
+                    Debug.Assert(false);
+                    return false;
             }
+            
         }
 
         // True only during the window after a call to DebugActiveProcess,
@@ -2536,6 +2632,8 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
 
 
         private ManualResetEvent m_stopEvent = new ManualResetEvent(false); // this will get signalled whenever we get stopped.
+        private ManualResetEvent m_threadCreatedStopEvent = new ManualResetEvent(true); // this will get signalled whenever we get stopped.
+        public ManualResetEvent ProcessStopEvent = new ManualResetEvent(true); // this will get signalled whenever we get stopped.
 
         // An object describing why we stopped. 
         private Object m_stopReason = null;
@@ -2547,7 +2645,8 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         // This is a dispenser for m_stopCounter values. 
         private static int g_stopCounter = 0;
 
-        private CorStepper m_activeStepper = null;
+        //private CorStepper m_activeStepper = null;
+        private Dictionary<CorThread, CorStepper> m_activeStepper = null;
         private DebugModeFlag m_debugMode = DebugModeFlag.Default;
 
         private string m_symPath = null; // symbol path for current process.
@@ -2633,9 +2732,9 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                     return;
 
                 // we will stop only if this callback is from our own stepper.
-                if (e.Stepper == m_activeStepper)
+                if (e.Stepper == m_activeStepper[e.Thread])
                 {
-                    m_activeStepper = null;
+                    m_activeStepper[e.Thread] = null;
                     e.Continue = false;
                     InternalSignalRuntimeIsStopped(e.Thread, new StepCompleteStopReason(e.Stepper, e.StepReason));
                 }
@@ -2792,6 +2891,16 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         private void ExitProcessEventHandler(Object sender, CorProcessEventArgs e)
         {
             Trace.WriteLine("ManagedCallback::ExitProcess");
+                
+            // wait until we have no active thread 
+            while(this.Threads.HaveActive)
+            {
+                Trace.WriteLine("ManagedCallback::ExitProcess Waiting until we have no active thread");
+                ProcessStopEvent.WaitOne();
+                ReallyContinueProcess();
+                Thread.Sleep(1000);
+            }
+
             BeginManagedDebugEvent();
             try
             {
@@ -2810,9 +2919,9 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                 EndManagedDebugEvent(e);
             }
         }
-
         private void CreateThreadEventHandler(Object sender, CorThreadEventArgs e)
         {
+            m_threadCreatedStopEvent.Reset();
             Trace.WriteLine("ManagedCallback::CreateThread");
             BeginManagedDebugEvent();
             try
@@ -2855,6 +2964,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             finally
             {
                 EndManagedDebugEvent(e);
+                m_threadCreatedStopEvent.Set();
             }
         }
 
@@ -3476,20 +3586,24 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         private bool HandleCustomPostCallback(ManagedCallbackType callbackType, CorEventArgs callbackArgs)
         {
             CorNativeStopEventArgs nativeStopEventArgs = (callbackArgs as CorNativeStopEventArgs);
-            
+            bool retVal;
             // If the event is in-band, then we have to lock the MDbgProcess to make sure 
             // the callback is synchronized with other threads.
+            Trace.WriteLine("HandleCustomPostCallback lock(this)");
             lock (this)
             {
-                return HandleCustomPostCallbackWorker(callbackType, callbackArgs);
+                 retVal = HandleCustomPostCallbackWorker(callbackType, callbackArgs);
             }
+            Trace.WriteLine("HandleCustomPostCallback un-lock(this)");
+            return retVal;
         }
 
         // helper for HandleCustomPostCallback()
         private bool HandleCustomPostCallbackWorker(ManagedCallbackType callbackType, CorEventArgs callbackArgs)
         {
             bool stopRequested = false;
-            bool needAsyncStopCall = false;
+            //bool needAsyncStopCall = false;
+            bool needAsyncStopCall = true;
 
             using (MDbgProcessStopController psc = new MDbgProcessStopController(this, callbackArgs, needAsyncStopCall))
             {
