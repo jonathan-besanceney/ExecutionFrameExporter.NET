@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 
 using Microsoft.Samples.Debugging.MdbgEngine;
@@ -13,57 +12,6 @@ namespace FrameExporter.Utils
 {
     public class AssemblyMgr
     {
-        private const string assemblySeparator = ",";
-        private const string dot = ".";
-        private static char[] nameSeparator = new char[] { '.' };
-
-        private readonly Dictionary<long, MethodDesc> methods = new Dictionary<long, MethodDesc>();
-        
-        private class TypeInfoCache
-        {
-            public Dictionary<string, MethodInfo> MethodInfoCache = new Dictionary<string, MethodInfo>();
-            public Dictionary<string, MemberInfo> MemberInfoCache = new Dictionary<string, MemberInfo>();
-            public Dictionary<string, List<ValueInfo>> FieldInfoCache = new Dictionary<string, List<ValueInfo>>();
-            public Dictionary<string, EventInfo> EventInfoCache = new Dictionary<string, EventInfo>();
-            public Dictionary<string, ConstructorInfo> ConstructorInfoCache = new Dictionary<string, ConstructorInfo>();
-            public Dictionary<string, PropertyInfo> PropertyInfoCache = new Dictionary<string, PropertyInfo>();
-
-            public void Concat(TypeInfoCache typeInfoCache)
-            {
-                MethodInfoCache = MethodInfoCache.Concat(typeInfoCache.MethodInfoCache).ToDictionary(x => x.Key, x=>x.Value);
-                MemberInfoCache = MemberInfoCache.Concat(typeInfoCache.MemberInfoCache).ToDictionary(x => x.Key, x => x.Value);
-                FieldInfoCache = FieldInfoCache.Concat(typeInfoCache.FieldInfoCache).ToDictionary(x => x.Key, x => x.Value);
-                EventInfoCache = EventInfoCache.Concat(typeInfoCache.EventInfoCache).ToDictionary(x => x.Key, x => x.Value);
-                ConstructorInfoCache = ConstructorInfoCache.Concat(typeInfoCache.ConstructorInfoCache).ToDictionary(x => x.Key, x => x.Value);
-                PropertyInfoCache = PropertyInfoCache.Concat(typeInfoCache.PropertyInfoCache).ToDictionary(x => x.Key, x => x.Value);
-            }
-        }
-        private readonly TypeInfoCache assemblyCache = new TypeInfoCache();
-
-        private static string GetParameterInfoHash(ParameterInfo[] parameterInfos)
-        {
-            StringBuilder h_parameters = new StringBuilder();
-            foreach (ParameterInfo parameterInfo in parameterInfos)
-            {
-                h_parameters.Append(dot);
-                h_parameters.Append(parameterInfo.ParameterType.FullName);
-            }
-            return h_parameters.ToString();
-        }
-
-        private static string GetParameterInfoHash(MDbgFrame frame)
-        {
-            MDbgValue[] arguments = frame.Function.GetArguments(frame);
-            StringBuilder hash = new StringBuilder();
-            for (int i = 0; i < arguments.Length; i++)
-            {
-                if (arguments[i].Name == "this") continue;
-                hash.Append(dot);
-                hash.Append(arguments[i].TypeName);
-            }
-            return hash.ToString();
-        }
-
         private static TypeInfoCache BuildTypeInfoCacheFromAssembly(string assemblyFile)
         {
             Assembly assembly = Assembly.LoadFile(assemblyFile);
@@ -72,20 +20,20 @@ namespace FrameExporter.Utils
             foreach (TypeInfo typeInfo in assembly.DefinedTypes)
             {
                 string hash = string.Empty;
-                string base_hash = $"{typeInfo.Namespace}{dot}{typeInfo.Name}";
-                typeInfoCache.FieldInfoCache.Add(base_hash, new List<ValueInfo>());
+                string base_hash = $"{typeInfo.Namespace}{DOT}{typeInfo.Name}";
+
+                typeInfoCache.LitteralCache.Add(base_hash, new List<ValueInfo>());
+                typeInfoCache.StaticCache.Add(base_hash, new List<ValueInfo>());
 
 
                 foreach (MethodInfo methodInfo in typeInfo.DeclaredMethods)
                 {
-                    string h_parameters = GetParameterInfoHash(methodInfo.GetParameters());
-                    hash = $"{base_hash}{dot}{methodInfo.Name}{h_parameters}";
-                    typeInfoCache.MethodInfoCache.Add(hash, methodInfo);
+                    typeInfoCache.MethodInfoCacheToken.Add($"{methodInfo.DeclaringType.FullName}{methodInfo.MetadataToken}", methodInfo);
                 }
 
                 foreach (MemberInfo memberInfo in typeInfo.DeclaredMembers)
                 {
-                    hash = $"{base_hash}{dot}{memberInfo.Name}";
+                    hash = $"{base_hash}{DOT}{memberInfo.Name}";
                     if (!typeInfoCache.MemberInfoCache.ContainsKey(hash))
                         typeInfoCache.MemberInfoCache.Add(hash, memberInfo);
                 }
@@ -105,43 +53,39 @@ namespace FrameExporter.Utils
                         // See MDbgValue.IsComplexType property definition
                         valueInfo.IsComplexType = !valueInfo.IsNull && (fieldInfo.FieldType.IsClass || fieldInfo.FieldType.IsValueType);
                         valueInfo.Value = fieldInfo.GetRawConstantValue();
-                        
-                        typeInfoCache.FieldInfoCache[base_hash].Add(valueInfo);
+
+                        typeInfoCache.LitteralCache[base_hash].Add(valueInfo);
                     }
                     // value is set at execution time and should be read via debugger
                     else if (fieldInfo.IsStatic) // exclude "<*>k__BackingField"
                     {
-                        
+
                         ValueInfo valueInfo = new ValueInfo();
                         valueInfo.MetadataToken = fieldInfo.MetadataToken;
                         //valueInfo.Address will be set at debugging time
                         valueInfo.Name = fieldInfo.Name;
                         valueInfo.TypeName = fieldInfo.FieldType.FullName;
                         valueInfo.IsArrayType = fieldInfo.FieldType.IsArray;
-                        // See MDbgValue.IsComplexType property definition
-                        //valueInfo.IsComplexType = fieldInfo.FieldType.IsClass || fieldInfo.FieldType.IsValueType;
-                        //valueInfo.Value
-                        //valueInfo.IsNull = valueInfo.Value != null ? false : true;
-                        typeInfoCache.FieldInfoCache[base_hash].Add(valueInfo);
+                        valueInfo.IsStatic = true;
+
+                        typeInfoCache.StaticCache[base_hash].Add(valueInfo);
                     }
                 }
 
                 foreach (EventInfo eventInfo in typeInfo.DeclaredEvents)
                 {
-                    hash = $"{base_hash}{dot}{eventInfo.Name}";
+                    hash = $"{base_hash}{DOT}{eventInfo.Name}";
                     typeInfoCache.EventInfoCache.Add(hash, eventInfo);
                 }
 
                 foreach (ConstructorInfo constructorInfo in typeInfo.DeclaredConstructors)
                 {
-                    string h_parameters = GetParameterInfoHash(constructorInfo.GetParameters());
-                    hash = $"{base_hash}{dot}{constructorInfo.Name}{h_parameters}";
-                    typeInfoCache.ConstructorInfoCache.Add(hash, constructorInfo);
+                    typeInfoCache.ConstructorInfoCacheToken.Add($"{constructorInfo.DeclaringType.FullName}{constructorInfo.MetadataToken}", constructorInfo);
                 }
 
                 foreach (PropertyInfo propertyInfo in typeInfo.DeclaredProperties)
                 {
-                    hash = $"{base_hash}{dot}{propertyInfo.Name}";
+                    hash = $"{base_hash}{DOT}{propertyInfo.Name}";
                     typeInfoCache.PropertyInfoCache.Add(hash, propertyInfo);
                 }
             }
@@ -149,7 +93,7 @@ namespace FrameExporter.Utils
             return typeInfoCache;
         }
 
-        private async Task<TypeInfoCache> BuildTypeInfoCacheFromAssemblyAsync(string assemblyFile)
+        private static async Task<TypeInfoCache> BuildTypeInfoCacheFromAssemblyAsync(string assemblyFile)
         {
             return await Task.Run(() => BuildTypeInfoCacheFromAssembly(assemblyFile));
         }
@@ -174,12 +118,17 @@ namespace FrameExporter.Utils
                 foreach (string d in Directory.GetDirectories(assemblyPath))
                     LoadAssemblyTree(d, assemblyTasks);
             }
-            catch (Exception excpt)
+            catch (Exception e)
             {
-                Console.WriteLine(excpt.Message);
+                Console.WriteLine(e.Message);
             }
         }
 
+        /// <summary>
+        /// Build assembly cache.
+        /// This method should be called before all other methods of AssemblyMgr
+        /// </summary>
+        /// <param name="assemblyPath"></param>
         public void BuildAssemblyCache(string assemblyPath)
         {
             List<Task<TypeInfoCache>> assemblyTasks = new List<Task<TypeInfoCache>>();
@@ -197,6 +146,8 @@ namespace FrameExporter.Utils
         private MethodDesc GetMethodDesc(MethodInfo methodInfo, MDbgValue[] args)
         {
             MethodDesc method = new MethodDesc();
+            method.Token = methodInfo.MetadataToken;
+
             method.AssemblyName = methodInfo.DeclaringType.Assembly.FullName;
             method.NameSpace = methodInfo.DeclaringType.Namespace;
             method.ClassName = methodInfo.DeclaringType.Name;
@@ -209,7 +160,7 @@ namespace FrameExporter.Utils
             return method;
         }
 
-        private MethodDesc GetMethodDesc(ConstructorInfo methodInfo, MDbgValue[] args)
+        private MethodDesc GetConstructorDesc(ConstructorInfo methodInfo, MDbgValue[] args)
         {
             MethodDesc method = new MethodDesc();
             method.AssemblyName = methodInfo.DeclaringType.Assembly.FullName;
@@ -224,39 +175,103 @@ namespace FrameExporter.Utils
             return method;
         }
 
+        /// <summary>
+        /// Extract MethodDesc from current frame
+        /// </summary>
+        /// <param name="frame"></param>
+        /// <returns></returns>
         public MethodDesc GetMethodDesc(MDbgFrame frame)
         {
+            // Method Token is not unique across modules
             long methodHash = long.Parse($"{frame.Function.Module.Number}{frame.Function.CorFunction.Token}");
-            if (!methods.ContainsKey(methodHash))
+            if (!methodsCache.ContainsKey(methodHash))
             {
-                StringBuilder sbhash = new StringBuilder(frame.Function.FullName);
-                sbhash.Append(GetParameterInfoHash(frame));
-                string hash = sbhash.ToString();
+                string hash = $"{frame.Function.MethodInfo.DeclaringType.FullName}{frame.Function.MethodInfo.MetadataToken}";
 
                 MethodDesc md = null;
-                if (assemblyCache.MethodInfoCache.ContainsKey(hash))
-                    md = GetMethodDesc(assemblyCache.MethodInfoCache[hash], frame.Function.GetArguments(frame));
-                else if (assemblyCache.ConstructorInfoCache.ContainsKey(hash))
-                    md = GetMethodDesc(assemblyCache.ConstructorInfoCache[hash], frame.Function.GetArguments(frame));
+                if (assemblyCache.MethodInfoCacheToken.ContainsKey(hash))
+                    md = GetMethodDesc(assemblyCache.MethodInfoCacheToken[hash], frame.Function.GetArguments(frame));
+                else if (assemblyCache.ConstructorInfoCacheToken.ContainsKey(hash))
+                    md = GetConstructorDesc(assemblyCache.ConstructorInfoCacheToken[hash], frame.Function.GetArguments(frame));
 
-                methods.Add(methodHash, md);
+                methodsCache.Add(methodHash, md);
             }
-            return methods[methodHash];
+            return methodsCache[methodHash];
         }
 
+        /// <summary>
+        /// Async version of GetMethodDesc
+        /// </summary>
+        /// <param name="frame"></param>
+        /// <returns></returns>
         public async Task<MethodDesc> GetMethodDescAsync(MDbgFrame frame)
         {
             return await Task.Run(() => GetMethodDesc(frame));
         }
 
-        public ValueInfo[] GetConstants(string classNameWithNameSpace)
+        /// <summary>
+        /// Returns ValueInfo array of static variables. Value field is populated
+        /// </summary>
+        /// <param name="classNameWithNameSpace">Where to search constants</param>
+        /// <returns></returns>
+        public ValueInfo[] GetLitterals(string classNameWithNameSpace)
         {
-            if (assemblyCache.FieldInfoCache.ContainsKey(classNameWithNameSpace))
-                return assemblyCache.FieldInfoCache[classNameWithNameSpace].ToArray();
+            if (assemblyCache.LitteralCache.ContainsKey(classNameWithNameSpace))
+                return assemblyCache.LitteralCache[classNameWithNameSpace].ToArray();
 
             return null;
         }
 
+        /// <summary>
+        /// Returns ValueInfo array of static variables. Value field needs to be populated
+        /// </summary>
+        /// <param name="classNameWithNameSpace">Where to search static variables</param>
+        /// <returns></returns>
+        public ValueInfo[] GetStaticVariables(string classNameWithNameSpace)
+        {
+            if (assemblyCache.StaticCache.ContainsKey(classNameWithNameSpace))
+                return assemblyCache.StaticCache[classNameWithNameSpace].ToArray();
+
+            return null;
+        }
+
+        /// <summary>
+        /// Stores MethodDesc in a dictionary. Key is made with Module ID concatenated with methode Token
+        /// Used as TypeInfoCache shortcut in GetMethodDesc()
+        /// </summary>
+        private readonly Dictionary<long, MethodDesc> methodsCache = new Dictionary<long, MethodDesc>();
+
+        /// <summary>
+        /// AssemblyMgr main cache definition. Stores all assembly objects in Dictionary<string, object>
+        /// </summary>
+        private class TypeInfoCache
+        {
+            public Dictionary<string, MethodInfo> MethodInfoCacheToken = new Dictionary<string, MethodInfo>();
+            public Dictionary<string, MemberInfo> MemberInfoCache = new Dictionary<string, MemberInfo>();
+            public Dictionary<string, List<ValueInfo>> LitteralCache = new Dictionary<string, List<ValueInfo>>();
+            public Dictionary<string, List<ValueInfo>> StaticCache = new Dictionary<string, List<ValueInfo>>();
+            public Dictionary<string, EventInfo> EventInfoCache = new Dictionary<string, EventInfo>();
+            public Dictionary<string, ConstructorInfo> ConstructorInfoCacheToken = new Dictionary<string, ConstructorInfo>();
+            public Dictionary<string, PropertyInfo> PropertyInfoCache = new Dictionary<string, PropertyInfo>();
+
+            public void Concat(TypeInfoCache typeInfoCache)
+            {
+                MethodInfoCacheToken = MethodInfoCacheToken.Concat(typeInfoCache.MethodInfoCacheToken).ToDictionary(x => x.Key, x => x.Value);
+                MemberInfoCache = MemberInfoCache.Concat(typeInfoCache.MemberInfoCache).ToDictionary(x => x.Key, x => x.Value);
+                LitteralCache = LitteralCache.Concat(typeInfoCache.LitteralCache).ToDictionary(x => x.Key, x => x.Value);
+                StaticCache = StaticCache.Concat(typeInfoCache.StaticCache).ToDictionary(x => x.Key, x => x.Value);
+                EventInfoCache = EventInfoCache.Concat(typeInfoCache.EventInfoCache).ToDictionary(x => x.Key, x => x.Value);
+                ConstructorInfoCacheToken = ConstructorInfoCacheToken.Concat(typeInfoCache.ConstructorInfoCacheToken).ToDictionary(x => x.Key, x => x.Value);
+                PropertyInfoCache = PropertyInfoCache.Concat(typeInfoCache.PropertyInfoCache).ToDictionary(x => x.Key, x => x.Value);
+            }
+        }
+        private readonly TypeInfoCache assemblyCache = new TypeInfoCache();
+
+        /// <summary>
+        /// Assembly file extensions
+        /// </summary>
         private static readonly string[] extensions = new string[] { "exe", "dll" };
+
+        private const string DOT = ".";
     }
 }
