@@ -115,20 +115,11 @@ namespace FrameExporter
             NextStep nextStep = null;
             ExecutionFrame frame = null;
 
-            if (thread == null)
-                return nextStep;
+            //TraceThreadFrames(thread);
 
-            TraceThreadFrames(thread);
-            if (thread.Suspended)
-                return nextStep;
-
-            if (
-                    !thread.Suspended
-                    && thread.CorThread.UserState == CorDebugUserState.USER_UNSAFE_POINT
-               )
+            // avoid COMExceptions by suspending Thread in USER_UNSAFE_POINT UserState
+            if (!thread.Suspended && thread.CorThread.UserState == CorDebugUserState.USER_UNSAFE_POINT)
                 thread.Suspended = true;
-            else if (thread.Suspended && thread.CorThread.UserState != CorDebugUserState.USER_UNSAFE_POINT)
-                thread.Suspended = false;
             
             try
             {
@@ -165,11 +156,12 @@ namespace FrameExporter
 
                     output.SendFrameAsync(frame);
 
-                    nextStep = new NextStep(process, thread, StepperType.In, false);
+                    nextStep = new NextStep(process, thread, StepperType.Over, false);
                     
                 }
                 else
                 {
+                    // TODO : Improve this. Suspended threads are not always un-suspended
                     if (
                         thread.BottomFrame != null
                         && thread.BottomFrame.Function.FullName == "System.Threading._ThreadPoolWaitCallback.PerformWaitCallback"
@@ -217,36 +209,7 @@ namespace FrameExporter
             catch (Exception e)
             {
                 Trace.WriteLine($"thread[{thread.Number}].BottomFrame: {e.Message}");
-            }
-            
-            /*try
-            {
-                Trace.WriteLine($"thread[{thread.Number}].CurrentFrame: {thread.CurrentFrame}");
-                if (thread.CurrentFrame != null)
-                {
-                    try
-                    {
-                        Trace.WriteLine($"\tthread[{thread.Number}].CurrentFrame.NextUp: {thread.CurrentFrame.NextUp}");
-                    }
-                    catch (Exception e)
-                    {
-                        Trace.WriteLine($"\tthread[{thread.Number}].CurrentFrame.NextUp: {e.Message}");
-                    }
-                    try
-                    {
-                        Trace.WriteLine($"\tthread[{thread.Number}].CurrentFrame.NextDown: {thread.CurrentFrame.NextDown}");
-                    }
-                    catch (Exception e)
-                    {
-                        Trace.WriteLine($"\tthread[{thread.Number}].CurrentFrame.NextDown: {e.Message}");
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Trace.WriteLine($"thread[{thread.Number}].CurrentFrame: {e.Message}");
-            }*/
-            
+            }           
         }
     }
 }

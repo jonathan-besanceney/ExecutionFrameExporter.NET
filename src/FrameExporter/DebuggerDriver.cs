@@ -24,6 +24,7 @@ namespace FrameExporter
 
         private static MDbgSourceFileMgr sourceFileMgr = new MDbgSourceFileMgr();
         private static AssemblyMgr assemblyMgr = new AssemblyMgr();
+        private static BreakpointMgr breakpointMgr = new BreakpointMgr();
 
         private DebuggerDriver() { }
 
@@ -82,15 +83,11 @@ namespace FrameExporter
                 Console.Write($"Create process {m_ProcessToDebug.ExecutablePath}...");
                 mdbgProcess.CreateProcess(m_ProcessToDebug.ExecutablePath, m_ProcessToDebug.ExecutablePath);
             }
-            Console.WriteLine("done");
 
-            // experimental stuff
-            mdbgProcess.Breakpoints.CreateBreakpoint(@"***REMOVED***\ClassLibraryTest\FooBar.cs", 21);
-            //mdbgProcess.Breakpoints.CreateBreakpoint(@"***REMOVED***\RemoteDebug\Program.cs", 27);
-            mdbgProcess.Breakpoints.CreateBreakpoint("RemoteDebug", "Program", "main", 0);
-            mdbgProcess.Breakpoints.CreateBreakpoint("ClassLibraryTest", "FooBar", "..ctor", 0);
-            mdbgProcess.Breakpoints.CreateBreakpoint("ClassLibraryTest", "FooBar", "FibonacciSeriesAsync", 0);
-            mdbgProcess.Breakpoints.CreateBreakpoint("ClassLibraryTest", "FooBar", "FibonacciSeries", 0);
+            // Init breakpoint manager
+            breakpointMgr.InitBreakpointMgr(mdbgProcess, assemblyMgr.FunctionTokensPerModule);
+
+            Console.WriteLine("done");
         }
 
         public void Run()
