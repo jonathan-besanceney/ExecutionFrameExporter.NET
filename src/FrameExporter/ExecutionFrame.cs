@@ -53,6 +53,9 @@ namespace FrameExporter
 
     public class ExecutionFrame
     {
+        [JsonProperty]
+        public static string SessionName { get; set; }
+
         public long StepNo { get; set; }
         public int ThreadNumber { get; set; }
 
@@ -110,20 +113,20 @@ namespace FrameExporter
             await Task.Run(() => GetMethodInfoAndArgValues(frame, mdbgFrame));
         }
 
-        public static NextStep ReadFrame(long stepNo, MDbgProcess process, MDbgThread thread, IOutputPlugin output)
+        public static FrameType ReadFrame(long stepNo, MDbgProcess process, MDbgThread thread, IOutputPlugin output)
         {
-            NextStep nextStep = null;
+            FrameType frameType = FrameType.UNMANAGED;
             ExecutionFrame frame = null;
 
             //TraceThreadFrames(thread);
-
-            // avoid COMExceptions by suspending Thread in USER_UNSAFE_POINT UserState
-            if (!thread.Suspended && thread.CorThread.UserState == CorDebugUserState.USER_UNSAFE_POINT)
-                thread.Suspended = true;
-            
             try
             {
-                if (thread.HaveCurrentFrame && thread.CurrentFrame.CorFrame.FrameType == CorFrameType.ILFrame && thread.CurrentSourcePosition != null)
+                if (
+                    thread.HaveCurrentFrame
+                    && thread.CurrentFrame.CorFrame.FrameType == CorFrameType.ILFrame 
+                    && thread.CurrentSourcePosition != null 
+                    && thread.CorThread.UserState != CorDebugUserState.USER_UNSAFE_POINT // Avoid COMException when retrieving dereferenced values. Also seems that CurrentFrame is out of context in this case
+                    )
                 {
                     DateTime startTime = DateTime.Now;
 
@@ -138,54 +141,48 @@ namespace FrameExporter
 
                     Task methodDescTask = GetMethodInfoAndArgValuesAsync(frame, thread.CurrentFrame);
                     Task<string> sourceLineTask = SourcefileMgr.GetSourceLineAsync(frame.SourceFile, frame.LineNumber);
-                    Task<ValueInfo[]> valueInfosTask = ValueInfoUtils.MDbgValuesToValueInfoArrayAsync(thread.CurrentFrame.Function.GetActiveLocalVars(thread.CurrentFrame));
-                    Task<ValueInfo> exceptionTask = ValueInfoUtils.MDbgValueExceptionToValueInfoAsync(thread.CurrentException);
-
-                    Task.WaitAll(new Task[] { sourceLineTask, valueInfosTask, methodDescTask, exceptionTask });
-
-                    frame.SourceFileLine = sourceLineTask.Result;
-                    Trace.WriteLine($"thread[{thread.Number}]: {frame.SourceFileLine}");
-
-                    ValueInfo[] valueInfos = new ValueInfo[frame.LocalVariables.Length + valueInfosTask.Result.Length];
-                    frame.LocalVariables.CopyTo(valueInfos, 0);
-                    valueInfosTask.Result.CopyTo(valueInfos, frame.LocalVariables.Length);
-
-                    frame.LocalVariables = valueInfos;
-                    frame.CurrentException = exceptionTask.Result;
-                    frame.executionTime = (DateTime.Now - startTime).ToString();
-
-                    output.SendFrameAsync(frame);
-
-                    nextStep = new NextStep(process, thread, StepperType.Over, false);
-                    
-                }
-                else
-                {
-                    // TODO : Improve this. Suspended threads are not always un-suspended
-                    if (
-                        thread.BottomFrame != null
-                        && thread.BottomFrame.Function.FullName == "System.Threading._ThreadPoolWaitCallback.PerformWaitCallback"
-                        && thread.BottomFrame.NextUp != null
-                        && thread.BottomFrame.NextUp.CorFrame.FrameType == CorFrameType.InternalFrame
-                        && thread.BottomFrame.NextUp.CorFrame.InternalFrameType == CorDebugInternalFrameType.STUBFRAME_U2M
-                        )
+                    try
                     {
-                        foreach (MDbgThread m_thread in process.Threads)
-                        {
-                            if (m_thread.Suspended) m_thread.Suspended = false;
-                        }
+                        MDbgValue[] activeLocalVars = thread.CurrentFrame.Function.GetActiveLocalVars(thread.CurrentFrame);
+                        Task<ValueInfo[]> valueInfosTask = ValueInfoUtils.MDbgValuesToValueInfoArrayAsync(activeLocalVars);
+
+
+                        Task<ValueInfo> exceptionTask = ValueInfoUtils.MDbgValueExceptionToValueInfoAsync(thread.CurrentException);
+
+                        Task.WaitAll(new Task[] { sourceLineTask, valueInfosTask, methodDescTask, exceptionTask });
+
+                        frame.SourceFileLine = sourceLineTask.Result;
+                        Trace.WriteLine($"thread[{thread.Number}]: {frame.SourceFileLine}");
+
+                        ValueInfo[] valueInfos = new ValueInfo[frame.LocalVariables.Length + valueInfosTask.Result.Length];
+                        frame.LocalVariables.CopyTo(valueInfos, 0);
+                        valueInfosTask.Result.CopyTo(valueInfos, frame.LocalVariables.Length);
+
+                        frame.LocalVariables = valueInfos;
+                        frame.CurrentException = exceptionTask.Result;
+                        frame.executionTime = (DateTime.Now - startTime).ToString();
+
+                        output.SendFrameAsync(frame);
+                        frameType = FrameType.IL;
                     }
-                    nextStep = new NextStep(process, thread, StepperType.Out);
+                    catch
+                    {
+                        // TODO if crap happens. Should be dealt with
+                        // Debug code by now
+                        TraceThreadFrames(thread);
+                    }
+                }
+                else if (thread.CorThread.UserState == CorDebugUserState.USER_UNSAFE_POINT)
+                {
+                    frameType = FrameType.UNSAFE;
                 }
             }
             catch (Exception e)
             {
                 Trace.WriteLine($"!! ReadFrame thread[{thread.Number}]: {e.Message} {e.StackTrace}");
             }
-            Trace.WriteLine(nextStep.ToString());
-            return nextStep;
+            return frameType;
         }
-
 
         static void TraceThreadFrames(MDbgThread thread)
         {
@@ -211,5 +208,23 @@ namespace FrameExporter
                 Trace.WriteLine($"thread[{thread.Number}].BottomFrame: {e.Message}");
             }           
         }
+    }
+
+    public enum FrameType
+    {
+        /// <summary>
+        /// All good, the frame is readable
+        /// </summary>
+        IL,
+        /// <summary>
+        /// UserState of the thread is CorDebugUserState.USER_UNSAFE_POINT
+        /// </summary>
+        UNSAFE,
+        /// <summary>
+        /// No current frame,
+        /// Non-IL frame
+        /// No current source position
+        /// </summary>
+        UNMANAGED
     }
 }
