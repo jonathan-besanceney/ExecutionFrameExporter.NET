@@ -135,7 +135,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// Creates a breakpoint in debugged program based on source location.
         /// </summary>
         /// <param name="fileName">name of source file.</param>
-        /// <param name="lineNumber">line nuber in the source file.</param>
+        /// <param name="lineNumber">line number in the source file.</param>
         /// <returns>created breakpoint.</returns>
         /// <remarks>
         ///     The breakpoint is created even if the location of the breakpoint

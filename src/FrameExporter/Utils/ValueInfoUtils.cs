@@ -89,10 +89,7 @@ namespace FrameExporter.Utils
         {
             ValueInfo value = new ValueInfo();
             value.IsMethodArgument = methodArgs;
-            /*Task populateTask = PopulateValueInfoStdPropertiesAsync(value, mDbgValue);
-            Task<object> valueTask = GetValueAsync(mDbgValue);
-            Task.WaitAll(new Task[] { populateTask, valueTask });
-            value.Value = valueTask.Result;*/
+
             PopulateValueInfoStdProperties(value, mDbgValue);
             value.Value = GetValue(mDbgValue);
             return value;

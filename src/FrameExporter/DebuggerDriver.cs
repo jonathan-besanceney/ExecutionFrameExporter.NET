@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.Threading;
 
@@ -7,6 +8,7 @@ using FrameExporter.OutputPlugin;
 using FrameExporter.Utils;
 
 using Microsoft.Samples.Debugging.CorDebug;
+using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 using Microsoft.Samples.Debugging.MdbgEngine;
 using Microsoft.Samples.Tools.Mdbg;
 
@@ -14,7 +16,7 @@ namespace FrameExporter
 {
     public class DebuggerDriver : CommandBase, IDisposable
     {
-        private ProcessToDebug m_ProcessToDebug = null;
+        private Parameters _parameters = null;
         private MDbgShell shell = null;
         private MDbgProcess mdbgProcess = null;
         private MDbgEngine debugger = null;
@@ -24,12 +26,13 @@ namespace FrameExporter
 
         private static MDbgSourceFileMgr sourceFileMgr = new MDbgSourceFileMgr();
         private static AssemblyMgr assemblyMgr = new AssemblyMgr();
+        private static BreakpointMgr breakpointMgr = new BreakpointMgr();
 
         private DebuggerDriver() { }
 
-        public DebuggerDriver(ProcessToDebug processToDebug): this()
+        public DebuggerDriver(Parameters parameters): this()
         {
-            m_ProcessToDebug = processToDebug;
+            _parameters = parameters;
         }
 
         public void Initialize()
@@ -38,27 +41,29 @@ namespace FrameExporter
             debugger = new MDbgEngine();
             shell.Debugger = debugger;
 
-            // Do we want the debugger to stop all new threads ?
-            // TODO Make it parameter in app.config
-            //debugger.Options.StopOnNewThread = true;
+            // Assign SessionName in the exported execution frames
+            ExecutionFrame.SessionName = _parameters.SessionName;
+
+            // Do we want the debugger to stop on all new threads ?
+            debugger.Options.StopOnNewThread = _parameters.StopOnNewThread;
 
             // set source and pdb folders
-            debugger.Options.SymbolPath = m_ProcessToDebug.SymbolPath;
-            Console.WriteLine($"SymbolPath set to {m_ProcessToDebug.SymbolPath}");
-            shell.FileLocator.Path = m_ProcessToDebug.SourcePath;
-            Console.WriteLine($"SourcePath set to {m_ProcessToDebug.SourcePath}");
+            debugger.Options.SymbolPath = _parameters.SymbolPath;
+            Console.WriteLine($"SymbolPath set to {_parameters.SymbolPath}");
+            shell.FileLocator.Path = _parameters.SourcePath;
+            Console.WriteLine($"SourcePath set to {_parameters.SourcePath}");
 
             // Load source files
             Console.WriteLine("Building source cache");
-            sourceFileMgr.BuildSourceCache(m_ProcessToDebug.SourcePath);
+            sourceFileMgr.BuildSourceCache(_parameters.SourcePath);
             ExecutionFrameReader.SourcefileMgr = sourceFileMgr;
 
             // Load assemblies 
-            assemblyMgr.BuildAssemblyCache(m_ProcessToDebug.ExecutablePath);
+            assemblyMgr.BuildAssemblyCache(_parameters.ExecutablePath);
             ExecutionFrameReader.AssemblyMgr = assemblyMgr;
             
-            Console.Write($"Get CLR Version of {m_ProcessToDebug.ExecutablePath}: ");
-            string version = MdbgVersionPolicy.GetDefaultLaunchVersion(m_ProcessToDebug.ExecutablePath);
+            Console.Write($"Get CLR Version of {_parameters.ExecutablePath}: ");
+            string version = MdbgVersionPolicy.GetDefaultLaunchVersion(_parameters.ExecutablePath);
             Console.WriteLine(version);
             Console.Write("Create debugable process...");
             corDebugger = new CorDebugger(version);
@@ -71,26 +76,21 @@ namespace FrameExporter
             mdbgProcess.DebugMode = DebugModeFlag.Debug;
             
             
-            if (m_ProcessToDebug.IsPIDSet())
+            if (_parameters.IsPIDSet())
             {
-                Console.Write($"Attaching PID {m_ProcessToDebug.PID}...");
-                mdbgProcess.Attach(m_ProcessToDebug.PID);
+                Console.Write($"Attaching PID {_parameters.PID}...");
+                mdbgProcess.Attach(_parameters.PID);
             }
             else
             {
-                // TODO Deal with arguments !
-                Console.Write($"Create process {m_ProcessToDebug.ExecutablePath}...");
-                mdbgProcess.CreateProcess(m_ProcessToDebug.ExecutablePath, m_ProcessToDebug.ExecutablePath);
+                Console.Write($"Create process {_parameters.ExecutablePath}...");
+                mdbgProcess.CreateProcess(_parameters.ExecutablePath, _parameters.ExecutableArgs, _parameters.ExecutableWorkingDir);
             }
-            Console.WriteLine("done");
 
-            // experimental stuff
-            mdbgProcess.Breakpoints.CreateBreakpoint(@"***REMOVED***\ClassLibraryTest\FooBar.cs", 21);
-            //mdbgProcess.Breakpoints.CreateBreakpoint(@"***REMOVED***\RemoteDebug\Program.cs", 27);
-            mdbgProcess.Breakpoints.CreateBreakpoint("RemoteDebug", "Program", "main", 0);
-            mdbgProcess.Breakpoints.CreateBreakpoint("ClassLibraryTest", "FooBar", "..ctor", 0);
-            mdbgProcess.Breakpoints.CreateBreakpoint("ClassLibraryTest", "FooBar", "FibonacciSeriesAsync", 0);
-            mdbgProcess.Breakpoints.CreateBreakpoint("ClassLibraryTest", "FooBar", "FibonacciSeries", 0);
+            // Init breakpoint manager
+            breakpointMgr.InitBreakpointMgr(mdbgProcess, assemblyMgr.FunctionTokensPerModule, _parameters.UserBreakpointParameters);
+
+            Console.WriteLine("done");
         }
 
         public void Run()
@@ -99,28 +99,60 @@ namespace FrameExporter
             {
                 using (IOutputPlugin output = new FileOutput("debug.log"))
                 {
-                    // entry point
+                    // Debugee entry point
                     using (WaitHandle waitHandle = mdbgProcess.Go())
                     {
+                        bool entryPoint = true;
                         long stepNo = 1;
+                        int incrementStepNo = 0; // Will be set to 1 if there is something read
+
                         while (mdbgProcess.ThreadCreatedStopEvent.WaitOne() && waitHandle.WaitOne() && mdbgProcess.Threads.HaveActive)
                         {
                             mdbgProcess.ProcessStopEvent.Reset();
-                            
-                            int no = 0;
-                            while(no < mdbgProcess.Threads.Count)
+
+                            // If user has set breakpoints, step out the entrypoint
+                            if (entryPoint && breakpointMgr.breakpointMgrMode == BreakpointMgrMode.USER_DEFINED)
                             {
-                                if (mdbgProcess.Threads[no] != null && !mdbgProcess.Threads[no].Suspended)
+                                nextStepMgr.Add(new NextStep(mdbgProcess, mdbgProcess.Threads[0], StepperType.Out, false));
+                                entryPoint = false;
+                            }
+                            else if (breakpointMgr.HasBreakpoints) // we want to read frame here
+                            {
+                                int threadCounter = 0;
+                                while (threadCounter < mdbgProcess.Threads.Count)
                                 {
-                                    Trace.WriteLine($"Read thread[{no}] step no {stepNo}");
-                                    nextStepMgr.Add(ExecutionFrameReader.ReadFrame(stepNo, mdbgProcess, mdbgProcess.Threads[no], output));
+                                    if (mdbgProcess.Threads[threadCounter] != null && !mdbgProcess.Threads[threadCounter].Suspended)
+                                    {
+                                        Trace.WriteLine($"Read thread[{threadCounter}] step no {stepNo}");
+                                        NextStep nextStep = null;
+                                        FrameType frameType = ExecutionFrameReader.ReadFrame(stepNo, mdbgProcess, mdbgProcess.Threads[threadCounter], output);
+
+                                        switch (frameType)
+                                        {
+                                            case FrameType.UNSAFE:
+                                            case FrameType.UNMANAGED:
+                                                nextStep = new NextStep(mdbgProcess, mdbgProcess.Threads[threadCounter], StepperType.Out, false);
+                                                break;
+                                            case FrameType.IL:
+                                                nextStep = new NextStep(mdbgProcess, mdbgProcess.Threads[threadCounter], StepperType.Over, false);
+                                                incrementStepNo = 1;
+                                                break;
+                                        }
+                                        nextStepMgr.Add(nextStep);
+                                    }
+                                    threadCounter++;
                                 }
-                                no++;
+                            }
+                            else // nothing left to read
+                            {
+                                nextStepMgr.Add(new NextStep(mdbgProcess, mdbgProcess.Threads[0], StepperType.Out, false));
                             }
                             nextStepMgr.Run();
+
                             mdbgProcess.ProcessStopEvent.Set();
                             mdbgProcess.Go();
-                            stepNo++;
+
+                            stepNo += incrementStepNo;
                         }
                     }
                 }

@@ -29,6 +29,7 @@ namespace FrameExporter.Utils
                 foreach (MethodInfo methodInfo in typeInfo.DeclaredMethods)
                 {
                     typeInfoCache.MethodInfoCacheToken.Add($"{methodInfo.DeclaringType.FullName}{methodInfo.MetadataToken}", methodInfo);
+                    typeInfoCache.functionTokensPerModule.AddToken(methodInfo.Module.FullyQualifiedName, methodInfo.MetadataToken);
                 }
 
                 foreach (MemberInfo memberInfo in typeInfo.DeclaredMembers)
@@ -81,6 +82,7 @@ namespace FrameExporter.Utils
                 foreach (ConstructorInfo constructorInfo in typeInfo.DeclaredConstructors)
                 {
                     typeInfoCache.ConstructorInfoCacheToken.Add($"{constructorInfo.DeclaringType.FullName}{constructorInfo.MetadataToken}", constructorInfo);
+                    typeInfoCache.functionTokensPerModule.AddToken(constructorInfo.Module.FullyQualifiedName, constructorInfo.MetadataToken);
                 }
 
                 foreach (PropertyInfo propertyInfo in typeInfo.DeclaredProperties)
@@ -98,8 +100,9 @@ namespace FrameExporter.Utils
             return await Task.Run(() => BuildTypeInfoCacheFromAssembly(assemblyFile));
         }
 
-        private void LoadAssemblyTree(string assemblyPath, List<Task<TypeInfoCache>> assemblyTasks)
+        private static void LoadAssemblyTree(string assemblyPath, List<Task<TypeInfoCache>> assemblyTasks)
         {
+            Console.WriteLine("Build assembly cache");
             try
             {
                 assemblyPath = Path.GetDirectoryName(assemblyPath);
@@ -133,8 +136,8 @@ namespace FrameExporter.Utils
         {
             List<Task<TypeInfoCache>> assemblyTasks = new List<Task<TypeInfoCache>>();
             LoadAssemblyTree(assemblyPath, assemblyTasks);
-            Task<TypeInfoCache>[] tasks = new Task<TypeInfoCache>[assemblyTasks.Count];
-            assemblyTasks.CopyTo(tasks, 0);
+            Task<TypeInfoCache>[] tasks = assemblyTasks.ToArray();//new Task<TypeInfoCache>[assemblyTasks.Count];
+            //assemblyTasks.CopyTo(tasks, 0);
             Task.WaitAll(tasks);
             foreach (Task<TypeInfoCache> task in assemblyTasks)
             {
@@ -235,6 +238,13 @@ namespace FrameExporter.Utils
             return null;
         }
 
+        public FunctionTokensPerModule FunctionTokensPerModule
+        {
+            get {
+                return assemblyCache.functionTokensPerModule;
+            }
+        }
+
         /// <summary>
         /// Stores MethodDesc in a dictionary. Key is made with Module ID concatenated with methode Token
         /// Used as TypeInfoCache shortcut in GetMethodDesc()
@@ -253,6 +263,7 @@ namespace FrameExporter.Utils
             public Dictionary<string, EventInfo> EventInfoCache = new Dictionary<string, EventInfo>();
             public Dictionary<string, ConstructorInfo> ConstructorInfoCacheToken = new Dictionary<string, ConstructorInfo>();
             public Dictionary<string, PropertyInfo> PropertyInfoCache = new Dictionary<string, PropertyInfo>();
+            public FunctionTokensPerModule functionTokensPerModule = new FunctionTokensPerModule();
 
             public void Concat(TypeInfoCache typeInfoCache)
             {
@@ -263,6 +274,7 @@ namespace FrameExporter.Utils
                 EventInfoCache = EventInfoCache.Concat(typeInfoCache.EventInfoCache).ToDictionary(x => x.Key, x => x.Value);
                 ConstructorInfoCacheToken = ConstructorInfoCacheToken.Concat(typeInfoCache.ConstructorInfoCacheToken).ToDictionary(x => x.Key, x => x.Value);
                 PropertyInfoCache = PropertyInfoCache.Concat(typeInfoCache.PropertyInfoCache).ToDictionary(x => x.Key, x => x.Value);
+                functionTokensPerModule = functionTokensPerModule.Concat(typeInfoCache.functionTokensPerModule);
             }
         }
         private readonly TypeInfoCache assemblyCache = new TypeInfoCache();
@@ -274,4 +286,35 @@ namespace FrameExporter.Utils
 
         private const string DOT = ".";
     }
+
+    public class FunctionTokensPerModule
+    {
+        private Dictionary<string, List<int>> _functionTokensPerModule = new Dictionary<string, List<int>>();
+
+        public void AddToken(string moduleFullyQualifiedName, int functionToken)
+        {
+            if (!_functionTokensPerModule.ContainsKey(moduleFullyQualifiedName))
+                _functionTokensPerModule.Add(moduleFullyQualifiedName, new List<int>());
+            _functionTokensPerModule[moduleFullyQualifiedName].Add(functionToken);
+        }
+
+        public List<int> GetModuleFunctionTokens(string moduleFullyQualifiedName)
+        {
+            if (!_functionTokensPerModule.ContainsKey(moduleFullyQualifiedName))
+                return new List<int>();
+            return _functionTokensPerModule[moduleFullyQualifiedName];
+        }
+
+        public FunctionTokensPerModule Concat(FunctionTokensPerModule functionTokensPerModule)
+        {
+            _functionTokensPerModule = _functionTokensPerModule.Concat(functionTokensPerModule._functionTokensPerModule).ToDictionary(x => x.Key, x => x.Value);
+            return this;
+        }
+
+        public bool ContainsModule(string moduleFullyQualifiedName)
+        {
+            return _functionTokensPerModule.ContainsKey(moduleFullyQualifiedName);
+        }
+    }
+
 }
