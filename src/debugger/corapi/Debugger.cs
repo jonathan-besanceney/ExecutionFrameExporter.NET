@@ -7,13 +7,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Text;
 using System.Security.Permissions;
-using System.Globalization;
+using System.Text;
 
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 

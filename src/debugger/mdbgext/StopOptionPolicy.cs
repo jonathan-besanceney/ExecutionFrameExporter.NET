@@ -4,18 +4,14 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Reflection;
-using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.MdbgEngine;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
+using Microsoft.Samples.Debugging.MdbgEngine;
 
 namespace Microsoft.Samples.Tools.Mdbg
 {

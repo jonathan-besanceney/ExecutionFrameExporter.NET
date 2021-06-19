@@ -7,12 +7,8 @@
 //---------------------------------------------------------------------
 
 using System;
-using System.Text;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-using Microsoft.Samples.Debugging.CorMetadata.NativeApi;
-using Microsoft.Samples.Debugging.Native;
 using Microsoft.Win32.SafeHandles;
 
 

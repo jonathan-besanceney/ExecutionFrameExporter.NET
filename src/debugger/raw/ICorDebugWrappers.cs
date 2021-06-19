@@ -14,7 +14,6 @@ using System.Runtime.InteropServices;
 
 using IStream = System.Runtime.InteropServices.ComTypes.IStream;
 using Microsoft.Samples.Debugging.CorMetadata.NativeApi;
-using Microsoft.Win32.SafeHandles;
 
 namespace Microsoft.Samples.Debugging.CorDebug.NativeApi
 {
@@ -141,20 +140,53 @@ namespace Microsoft.Samples.Debugging.CorDebug.NativeApi
 
 
 
-
+    /// <summary>
+    /// Indicates the user state of a thread.
+    /// https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/debugging/cordebuguserstate-enumeration
+    /// </summary>
     [Flags]
     public enum CorDebugUserState
     {
         // Fields
         USER_NONE = 0x00,
+        /// <summary>
+        /// A termination of the thread has been requested.
+        /// </summary>
         USER_STOP_REQUESTED = 0x01,
+        /// <summary>
+        /// A suspension of the thread has been requested.
+        /// </summary>
         USER_SUSPEND_REQUESTED = 0x02,
+        /// <summary>
+        /// The thread is running in the background.
+        /// </summary>
         USER_BACKGROUND = 0x04,
+        /// <summary>
+        /// The thread has not started executing.
+        /// </summary>
         USER_UNSTARTED = 0x08,
+        /// <summary>
+        /// The thread has been terminated.
+        /// </summary>
         USER_STOPPED = 0x10,
+        /// <summary>
+        /// The thread is waiting for another thread to complete a task.
+        /// </summary>
         USER_WAIT_SLEEP_JOIN = 0x20,
+        /// <summary>
+        /// The thread has been suspended.
+        /// </summary>
         USER_SUSPENDED = 0x40,
-        USER_UNSAFE_POINT = 0x80
+        /// <summary>
+        /// The thread is at an unsafe point. That is, the thread is at a point in execution where it may block garbage collection.
+        /// Debug events may be dispatched from unsafe points, but suspending a thread at an unsafe point will very likely cause a deadlock until the thread is resumed.
+        /// The safe and unsafe points are determined by the just-in-time(JIT) and garbage collection implementation.
+        /// </summary>
+        USER_UNSAFE_POINT = 0x80,
+        /// <summary>
+        /// The thread is from the thread pool.
+        /// </summary>
+        USER_THREADPOOL = 0x100
     }
 
     [CLSCompliant(true)]
@@ -371,9 +403,19 @@ namespace Microsoft.Samples.Debugging.CorDebug.NativeApi
     #endregion // Top-level interfaces
 
     #region AppDomain, Process
+    /// <summary>
+    /// Specifies the state of a thread for debugging.
+    /// https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/debugging/cordebugthreadstate-enumeration
+    /// </summary>
     public enum CorDebugThreadState
     {
+        /// <summary>
+        /// The thread runs freely, unless a debug event occurs.
+        /// </summary>
         THREAD_RUN,
+        /// <summary>
+        /// The thread cannot run.
+        /// </summary>
         THREAD_SUSPEND
     }
 
@@ -666,46 +708,131 @@ namespace Microsoft.Samples.Debugging.CorDebug.NativeApi
     #endregion Breakpoints
 
     #region Stepping
+    /// <summary>
+    /// Specifies the type of unmapped code that can trigger a halt in code execution by the stepper.
+    /// </summary>
     [Flags]
     public enum CorDebugUnmappedStop
     {
         // Fields
+        /// <summary>
+        /// Stop in all types of unmapped code.
+        /// </summary>
         STOP_ALL = 0xffff,
+        /// <summary>
+        /// Do not stop in any type of unmapped code.
+        /// </summary>
         STOP_NONE = 0,
+        /// <summary>
+        /// Stop in prolog code.
+        /// </summary>
         STOP_PROLOG = 1,
+        /// <summary>
+        /// Stop in epilog code.
+        /// </summary>
         STOP_EPILOG = 2,
+        /// <summary>
+        /// Stop in code that has no mapping information.
+        /// </summary>
         STOP_NO_MAPPING_INFO = 4,
+        /// <summary>
+        /// Stop in unmapped code that does not fit into the prolog, epilog, no-mapping-information, or unmanaged category.
+        /// </summary>
         STOP_OTHER_UNMAPPED = 8,
+        /// <summary>
+        /// Stop in unmanaged code. This value is valid only with interop debugging.
+        /// </summary>
         STOP_UNMANAGED = 0x10
     }
 
+    /// <summary>
+    /// Indicates the outcome of an individual step.
+    /// https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/debugging/cordebugstepreason-enumeration
+    /// </summary>
     public enum CorDebugStepReason
     {
+        /// <summary>
+        /// Stepping completed normally, within the same function.
+        /// </summary>
         STEP_NORMAL,
+        /// <summary>
+        /// Stepping continued normally, after the function returned.
+        /// </summary>
         STEP_RETURN,
+        /// <summary>
+        /// Stepping continued normally, at the beginning of a newly called function.
+        /// </summary>
         STEP_CALL,
+        /// <summary>
+        /// An exception was generated and control was passed to an exception filter.
+        /// </summary>
         STEP_EXCEPTION_FILTER,
+        /// <summary>
+        /// An exception was generated and control was passed to an exception handler.
+        /// </summary>
         STEP_EXCEPTION_HANDLER,
+        /// <summary>
+        /// Control was passed to an interceptor.
+        /// </summary>
         STEP_INTERCEPT,
+        /// <summary>
+        /// The thread exited before the step was completed.
+        /// </summary>
         STEP_EXIT
     }
+    /// <summary>
+    /// Indicates the types of code that can be intercepted (that is, stepped into).
+    /// https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/debugging/cordebugintercept-enumeration
+    /// </summary>
     [Flags]
     public enum CorDebugIntercept
     {
         // Fields
+        /// <summary>
+        /// No code can be intercepted.
+        /// </summary>
         INTERCEPT_NONE = 0,
+        /// <summary>
+        /// All code can be intercepted.
+        /// </summary>
         INTERCEPT_ALL = 0xffff,
+        /// <summary>
+        /// A constructor can be intercepted.
+        /// </summary>
         INTERCEPT_CLASS_INIT = 1,
+        /// <summary>
+        /// An exception filter can be intercepted.
+        /// </summary>
         INTERCEPT_EXCEPTION_FILTER = 2,
+        /// <summary>
+        /// Code that enforces security can be intercepted.
+        /// </summary>
         INTERCEPT_SECURITY = 4,
+        /// <summary>
+        /// A context policy can be intercepted.
+        /// </summary>
         INTERCEPT_CONTEXT_POLICY = 8,
+        /// <summary>
+        /// Not used.
+        /// </summary>
         INTERCEPT_INTERCEPTION = 0x10,
     }
 
+    /// <summary>
+    /// Contains the offset information for a range of code.
+    /// This structure is used by the ICorDebugStepper::StepRange method.
+    /// https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/debugging/cor-debug-step-range-structure
+    /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 4)]
     public struct COR_DEBUG_STEP_RANGE
     {
+        /// <summary>
+        /// The offset of the beginning of the range.
+        /// </summary>
         public uint startOffset;
+        /// <summary>
+        /// The offset of the end of the range.
+        /// </summary>
         public uint endOffset;
     }
 
@@ -1577,18 +1704,55 @@ namespace Microsoft.Samples.Debugging.CorDebug.NativeApi
         void EnumerateTypeParameters([Out, MarshalAs(UnmanagedType.Interface)] out ICorDebugTypeEnum ppTyParEnum);
     }
 
+    /// <summary>
+    /// Identifies the type of stack frame. This enumeration is used by the ICorDebugInternalFrame::GetFrameType method.
+    /// https://docs.microsoft.com/en-us/dotnet/framework/unmanaged-api/debugging/cordebuginternalframetype-enumeration
+    /// </summary>
     public enum CorDebugInternalFrameType
     {
+        /// <summary>
+        /// A null value. The ICorDebugInternalFrame::GetFrameType method never returns this value.
+        /// </summary>
         STUBFRAME_NONE,
+        /// <summary>
+        /// A managed-to-unmanaged stub frame.
+        /// </summary>
         STUBFRAME_M2U,
+        /// <summary>
+        /// An unmanaged-to-managed stub frame.
+        /// </summary>
         STUBFRAME_U2M,
+        /// <summary>
+        /// A transition between application domains.
+        /// </summary>
         STUBFRAME_APPDOMAIN_TRANSITION,
+        /// <summary>
+        /// A lightweight method call.
+        /// </summary>
         STUBFRAME_LIGHTWEIGHT_FUNCTION,
+        /// <summary>
+        /// The start of function evaluation.
+        /// </summary>
         STUBFRAME_FUNC_EVAL,
+        /// <summary>
+        /// An internal call into the common language runtime.
+        /// </summary>
         STUBFRAME_INTERNALCALL,
+        /// <summary>
+        /// The start of a class initialization.
+        /// </summary>
         STUBFRAME_CLASS_INIT,
+        /// <summary>
+        /// An exception that is thrown.
+        /// </summary>
         STUBFRAME_EXCEPTION,
+        /// <summary>
+        /// A frame used for code access security.
+        /// </summary>
         STUBFRAME_SECURITY,
+        /// <summary>
+        /// The runtime is JIT-compiling a method.
+        /// </summary>
         STUBFRAME_JIT_COMPILATION,
     }
 

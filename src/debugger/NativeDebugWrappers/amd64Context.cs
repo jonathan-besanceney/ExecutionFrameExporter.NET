@@ -8,9 +8,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-using Microsoft.Samples.Debugging.Native;
-using Microsoft.Samples.Debugging.Native.Private;
-
 namespace Microsoft.Samples.Debugging.Native
 {
     public class AMD64Context : INativeContext, IEquatable<INativeContext>, IDisposable

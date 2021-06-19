@@ -4,15 +4,10 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.IO;
 using System.Collections;
 using System.Diagnostics;
-using System.Globalization;
-using System.Diagnostics.SymbolStore;
-using System.Runtime.InteropServices;
 
 using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorMetadata;
 
 
 namespace Microsoft.Samples.Debugging.MdbgEngine

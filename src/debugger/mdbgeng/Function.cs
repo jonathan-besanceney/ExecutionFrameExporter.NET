@@ -5,15 +5,13 @@
 //---------------------------------------------------------------------
 using System;
 using System.Collections;
-using System.Reflection;
 using System.Diagnostics;
 using System.Diagnostics.SymbolStore;
+using System.Reflection;
 using System.Text;
-
 
 using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
-using Microsoft.Samples.Debugging.CorMetadata;
 
 
 namespace Microsoft.Samples.Debugging.MdbgEngine
@@ -177,6 +175,28 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                 ret[0].endOffset = (uint)CorFunction.ILCode.Size;
             }
             return ret;
+        }
+
+        /// <summary>
+        /// Starting Line of the current function
+        /// </summary>
+        public int StartLine
+        {
+            get
+            {
+                return m_SPstartLines[0];
+            }
+        }
+
+        /// <summary>
+        /// Ending line of the current function
+        /// </summary>
+        public int EndLine
+        {
+            get
+            {
+                return m_SPendLines[m_SPcount - 1];
+            }
         }
 
         /// <summary>

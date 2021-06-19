@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Diagnostics;
+
 using Microsoft.Samples.Debugging.CorSymbolStore;
 
 namespace Microsoft.Samples.Debugging.CorDebug

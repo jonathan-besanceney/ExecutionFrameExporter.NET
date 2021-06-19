@@ -4,17 +4,16 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
-using System.Runtime.InteropServices;
-using System.Globalization;
 using System.Diagnostics;
+using System.Globalization;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
 
-using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorMetadata.NativeApi;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
+using Microsoft.Samples.Debugging.CorMetadata.NativeApi;
 
 namespace Microsoft.Samples.Debugging.CorMetadata
 {
@@ -78,7 +77,7 @@ namespace Microsoft.Samples.Debugging.CorMetadata
             }
         }
 
-        private static string GetTypeName(IMetadataImport importer, int tk)
+        public static string GetTypeName(IMetadataImport importer, int tk)
         {
             // Get the base type name
             StringBuilder sbBaseName = new StringBuilder();

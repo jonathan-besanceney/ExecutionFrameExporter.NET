@@ -5,16 +5,14 @@
 //---------------------------------------------------------------------
 using System;
 using System.Collections;
-using System.Globalization;
-using System.Text;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 using System.Diagnostics.SymbolStore;
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 
 using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorMetadata;
-using System.Collections.Generic;
 
 namespace Microsoft.Samples.Debugging.MdbgEngine
 {
@@ -137,7 +135,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// Creates a breakpoint in debugged program based on source location.
         /// </summary>
         /// <param name="fileName">name of source file.</param>
-        /// <param name="lineNumber">line nuber in the source file.</param>
+        /// <param name="lineNumber">line number in the source file.</param>
         /// <returns>created breakpoint.</returns>
         /// <remarks>
         ///     The breakpoint is created even if the location of the breakpoint

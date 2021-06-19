@@ -4,11 +4,8 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.Reflection;
-using System.Text;
 using System.Runtime.InteropServices;
-using System.Globalization;
-using System.Diagnostics;
+using System.Text;
 
 namespace Microsoft.Samples.Debugging.CorMetadata.NativeApi
 {
@@ -368,7 +365,22 @@ namespace Microsoft.Samples.Debugging.CorMetadata.NativeApi
         //         mdSignature mdSig,                  // [IN] Signature token.    
         //         PCCOR_SIGNATURE *ppvSig,            // [OUT] return pointer to token.   
         //         ULONG       *pcbSig) PURE;          // [OUT] return size of signature.  
-        void GetSigFromToken_();
+        void GetSigFromToken(
+            [ComAliasName("mdSignature*")] [In] int mdSig,
+            [ComAliasName("PCCOR_SIGNATURE*")] [Out] out IntPtr ppvSig,
+            [ComAliasName("ULONG*")] [Out] out int pcbSig
+            );
+
+        /*
+        void GetMemberRefProps([In] uint mr,
+                               [ComAliasName("mdMemberRef*")] [Out] out int ptk,
+                               [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder szMember,
+                               [In] int cchMember,
+                               [ComAliasName("ULONG*")] [Out] out uint pchMember,
+                               [ComAliasName("PCCOR_SIGNATURE*")] [Out] out IntPtr ppvSigBlob,
+                               [ComAliasName("ULONG*")] [Out] out int pbSig
+                               );
+         */
 
         //     STDMETHOD(GetModuleRefProps)(           // S_OK or error.   
         //         mdModuleRef mur,                    // [IN] moduleref token.    
@@ -811,7 +823,13 @@ namespace Microsoft.Samples.Debugging.CorMetadata.NativeApi
         //         PCCOR_SIGNATURE pvSigBlob,          // [IN] point to a blob value of CLR signature 
         //         ULONG       cbSigBlob,              // [IN] count of bytes in the signature blob    
         //         mdMethodDef *pmb) PURE;             // [OUT] matching memberdef 
-        new void FindMethod_();
+        new void FindMethod(
+                [In] int td,
+                [In, MarshalAs(UnmanagedType.LPWStr)] string szName,
+                [ComAliasName("PCCOR_SIGNATURE*")] [In] IntPtr pvSigBlob,
+                [ComAliasName("ULONG*")] [In] uint cbSigBlob,
+                [ComAliasName("mdMethodDef*")] out int mdMethodDef
+            );
 
         //     STDMETHOD(FindField)(   
         //         mdTypeDef   td,                     // [IN] given typedef   

@@ -7,16 +7,13 @@
 //---------------------------------------------------------------------
 
 using System;
-using System.Text;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-
-using IStream=System.Runtime.InteropServices.ComTypes.IStream;
-using Microsoft.Win32.SafeHandles;
+using System.Text;
 
 namespace Microsoft.Samples.Debugging.CorPublish.NativeApi
 {
-      public enum __MIDL___MIDL_itf_corpub_0000_0001
+    public enum __MIDL___MIDL_itf_corpub_0000_0001
       {
             // Fields
             COR_PUB_MANAGEDONLY = 1

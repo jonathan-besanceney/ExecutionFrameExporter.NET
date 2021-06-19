@@ -10,9 +10,8 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
-
+using System.Threading;
 using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorMetadata;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 
 
@@ -34,16 +33,26 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// <summary>
         /// Gets or Sets if the Thread is Suspended.
         /// </summary>
-        /// <value>NotImplementedException.</value>
         public bool Suspended
         {
             get
             {
-                throw new NotImplementedException();
+                return CorThread.DebugState == CorDebugThreadState.THREAD_SUSPEND;
             }
             set
             {
-                throw new NotImplementedException();
+                if (value) CorThread.DebugState = CorDebugThreadState.THREAD_SUSPEND;
+                else CorThread.DebugState = CorDebugThreadState.THREAD_RUN;
+            }
+        }
+        [DllImport("kernel32.dll")]
+        static extern ThreadPriority GetThreadPriority(IntPtr hThread);
+
+        public ThreadPriority Priority
+        {
+            get
+            {
+                return GetThreadPriority(m_corThread.Handle);
             }
         }
 
@@ -520,14 +529,14 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// Lookup a MDbgThread using a CorThread.
         /// </summary>
         /// <param name="thread">The CorThread to use.</param>
-        /// <returns>The rusulting MDbgThread with the same ID.</returns>
+        /// <returns>The resulting MDbgThread with the same ID.</returns>
         public MDbgThread Lookup(CorThread thread)
         {
             return GetThreadFromThreadId(thread.Id);
         }
 
         /// <summary>
-        /// Gets on sets the Active Thread.
+        /// Gets or sets the Active Thread.
         /// </summary>
         /// <value>The Active Thread.</value>
         public MDbgThread Active
@@ -877,7 +886,9 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         {
             get
             {
-                return m_thread.m_stackWalker.GetFrame(m_thread.m_stackWalker.GetFrameIndex(this) - 1);
+                int index = m_thread.m_stackWalker.GetFrameIndex(this) - 1;
+                if (index < 0) return null;
+                return m_thread.m_stackWalker.GetFrame(index);
             }
         }
 
@@ -916,6 +927,24 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             if (!(value is MDbgILFrame))
                 return false;
             return ((value as MDbgILFrame).m_frame == this.m_frame);
+        }
+
+        public MDbgILFrame Callee
+        {
+            get
+            {
+                if (m_frame.Callee == null) return null;
+                return new MDbgILFrame(Thread, m_frame.Callee);
+            }
+        }
+
+        public MDbgILFrame Caller
+        {
+            get
+            {
+                if (m_frame.Caller == null) return null;
+                return new MDbgILFrame(Thread, m_frame.Caller);
+            }
         }
 
         /// <summary>

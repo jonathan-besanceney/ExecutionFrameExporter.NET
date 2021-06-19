@@ -8,13 +8,10 @@
 // These interfaces serve as an extension to the BCL's SymbolStore interfaces.
 namespace Microsoft.Samples.Debugging.CorSymbolStore
 {
-    using System.Diagnostics.SymbolStore;
-
     // Interface does not need to be marked with the serializable attribute
     using System;
-    using System.Text;
+    using System.Diagnostics.SymbolStore;
     using System.Runtime.InteropServices;
-    using System.Runtime.InteropServices.ComTypes;
 
     [
         ComImport,
