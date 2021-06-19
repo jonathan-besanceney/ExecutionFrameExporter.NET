@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorDebug.Utility;
-using System.Runtime.InteropServices;
 using System.IO;
+using System.Runtime.InteropServices;
+
+using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.Native;
 
 namespace Microsoft.Samples.Debugging.MdbgEngine

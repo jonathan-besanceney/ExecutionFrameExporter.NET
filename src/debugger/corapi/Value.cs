@@ -8,7 +8,6 @@ using System.Text;
 using System.Diagnostics;
 
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
-using System.Collections.Generic;
 
 namespace Microsoft.Samples.Debugging.CorDebug
 {

@@ -6,19 +6,8 @@
 // Part of managed wrappers for native debugging APIs.
 // Context.cs: defines INativeContext interfaces.
 //---------------------------------------------------------------------
-
-
 using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Runtime.InteropServices;
 using System.Diagnostics;
-using System.Runtime.Serialization;
-
-using Microsoft.Samples.Debugging.Native;
-using Microsoft.Samples.Debugging.Native.Private;
-
-
 
 namespace Microsoft.Samples.Debugging.Native
 {

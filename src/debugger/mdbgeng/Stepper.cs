@@ -36,6 +36,15 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             m_process = process;
         }
 
+        public StepperDescriptor(MDbgProcess process, MDbgThread thread) : this(process)
+        {
+            if (thread == null)
+            {
+                throw new ArgumentNullException("thread");
+            }
+            m_thread = thread.CorThread;
+        }
+
         /// <summary>
         /// Creates a source level stepper
         /// </summary>
@@ -116,6 +125,69 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
 
             return s;
         }
+
+        public static StepperDescriptor CreateSourceLevelStep(MDbgProcess process, MDbgThread thread, StepperType type, bool singleStepInstructions)
+        {
+            StepperDescriptor s = new StepperDescriptor(process, thread);
+            s.StepperType = type;
+
+            //
+            // Handle Step-out case.
+            // 
+            if (type == StepperType.Out || s.Thread.ActiveFrame == null)
+            {
+                s.StepperType = StepperType.Out;
+                return s;
+            }
+
+            //
+            // Handle step-over / step-in case
+            // 
+            //bool stepInto = (type == StepperType.In);
+
+
+            // Cache current 
+            s.Frame = s.Thread.ActiveFrame;
+
+            CorDebugMappingResult mappingResult;
+            uint ip;
+
+            if (!singleStepInstructions)
+            {
+                // For source-level stepping, skip some interceptors. These are random, and cause
+                // random differences in stepping across different runtimes; and user generally don't care
+                // about interceptors.
+                // It's actually a debatable policy about which interceptors to skip and stop on.
+                s.InterceptMask = CorDebugIntercept.INTERCEPT_ALL &
+                    ~(CorDebugIntercept.INTERCEPT_SECURITY | CorDebugIntercept.INTERCEPT_CLASS_INIT | CorDebugIntercept.INTERCEPT_EXCEPTION_FILTER | CorDebugIntercept.INTERCEPT_CONTEXT_POLICY);
+            }
+            
+            s.Frame.GetIP(out ip, out mappingResult);
+            Trace.WriteLine($"s.Frame.GetIP(out ip: {ip}, out mappingResult {mappingResult})");
+            if (singleStepInstructions ||
+                (mappingResult != CorDebugMappingResult.MAPPING_EXACT &&
+                 mappingResult != CorDebugMappingResult.MAPPING_APPROXIMATE))
+            {
+                // Leave step ranges null
+            }
+            else
+            {
+                // Getting the step ranges is what really makes this a source-level step.
+                MDbgFunction f = process.Modules.LookupFunction(s.Frame.Function);
+                COR_DEBUG_STEP_RANGE[] sr = f.GetStepRangesFromIP((int)ip);
+                Trace.WriteLine ($"f.GetStepRangesFromIP((int)ip): {sr.ToString()}");
+                if (sr != null)
+                {
+                    s.SetStepRanges(sr, true);
+                }
+                else
+                {
+                    // Leave step ranges null.
+                }
+            }
+            return s;
+        }
+
         #endregion // Creation
 
         #region Properties
@@ -334,14 +406,14 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             }
 
             CorStepper stepper;
-            if (m_frame == null)
-            {
+            /*if (m_frame == null)
+            {*/
                 stepper = thread.CreateStepper();
-            }
+            /*}
             else
             {                
                 stepper = m_frame.CreateStepper();
-            }
+            }*/
             Debug.Assert(stepper != null);
 
             //

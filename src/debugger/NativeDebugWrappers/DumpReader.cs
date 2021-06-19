@@ -8,14 +8,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
-
-using Microsoft.Win32.SafeHandles;
-using System.Runtime.InteropServices;
-using System.IO;
-using Microsoft.Samples.Debugging.Native;
-using System.Security.Permissions;
 using System.Globalization;
+using System.IO;
+using System.Runtime.InteropServices;
 
 // This provides a managed wrapper over the numanaged dump-reading APIs in DbgHelp.dll.
 // 
@@ -35,12 +30,12 @@ using System.Globalization;
 
 namespace Microsoft.Samples.Debugging.Native
 {
-    using NativeMethodsBase = Microsoft.Samples.Debugging.Native.NativeMethods;
-    using System.Diagnostics;
     using System.Runtime.Serialization;
 
+    using NativeMethodsBase = Microsoft.Samples.Debugging.Native.NativeMethods;
+
     #region Exceptions
-    
+
     /// <summary>
     /// Base class for DumpReader exceptions
     /// </summary>

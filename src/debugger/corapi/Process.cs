@@ -324,6 +324,7 @@ namespace Microsoft.Samples.Debugging.CorDebug
 
         public override void Continue(bool outOfBand)
         {
+            Trace.WriteLine($"CorProcess.Continue(outOfBand: {outOfBand})");
             if (!outOfBand &&                               // OOB event can arrive anytime (we just ignore them).
                 (m_callbackAttachedEvent != null))
             {

@@ -3,8 +3,6 @@
 // 
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
-using System;
-
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 
 namespace Microsoft.Samples.Debugging.CorDebug

@@ -4,14 +4,14 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.Diagnostics;
-using System.Text;
-using System.IO;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
+
 using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 using Microsoft.Samples.Debugging.CorMetadata;
@@ -51,6 +51,11 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             Debug.Assert(process != null && name != null);
             // corValue can be null for native variables in MC++
             Initialize(process, name, value);
+        }
+
+        public MDbgValue(MDbgProcess process, string name, CorValue value, MDbgValue parent): this(process, name, value)
+        {
+            Parent = parent;
         }
 
         private void Initialize(MDbgProcess process, string name, CorValue value)
@@ -255,13 +260,13 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         /// Gets all the Fields
         /// </summary>
         /// <returns>An array of all Fields.</returns>
-        public MDbgValue[] GetFields()
+        public MDbgValue[] GetFields(string filter = "")
         {
             if (!IsComplexType)
                 throw new MDbgValueException("Type is not complex");
 
             if (m_cachedFields == null)
-                m_cachedFields = InternalGetFields();
+                m_cachedFields = InternalGetFields(filter);
 
             return m_cachedFields;
         }
@@ -320,6 +325,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             return v;
         }
 
+        private Object m_Value = null;
         /// <summary>
         /// Gets or Sets the Value of the MDbgValue to the given value.
         /// </summary>
@@ -328,40 +334,12 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         {
             get
             {
-                throw new NotImplementedException();
+                //Value = m_corValue;
+                return m_Value;
             }
             set
             {
-                Debug.Assert(value != null);
-                if (value == null)
-                {
-                    throw new ArgumentNullException("value");
-                }
 
-                if (value is CorReferenceValue)
-                {
-                    CorReferenceValue lsValRef = CorValue.CastToReferenceValue();
-                    if (lsValRef == null)
-                    {
-                        throw new MDbgValueWrongTypeException("cannot assign reference value to non-reference value");
-                    }
-                    lsValRef.Value = ((CorReferenceValue)value).Value;
-                }
-                else if (value is CorGenericValue)
-                {
-                    CorGenericValue lsValGen = GetGenericValue();
-                    lsValGen.SetValue(((CorGenericValue)value).GetValue());
-                }
-                else if (value.GetType().IsPrimitive)
-                {
-                    // trying to set a primitive generic value, let the corapi layer attempt to convert the type                
-                    CorGenericValue gv = GetGenericValue();
-                    gv.SetValue(value);
-                }
-                else
-                {
-                    throw new MDbgValueWrongTypeException("Value is of unsupported type.");
-                }
             }
         }
 
@@ -789,7 +767,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         }
 
         // Helper to get all the fields, including static fields and base types. 
-        private MDbgValue[] InternalGetFields()
+        private MDbgValue[] InternalGetFields(string filter = "")
         {
             List<MDbgValue> al = new List<MDbgValue>();
 
@@ -832,11 +810,24 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
             while (true)
             {
                 Type classType = classModule.Importer.GetType(corClass.Token);
-                foreach (MetadataFieldInfo fi in classType.GetFields())
+                FieldInfo[] fieldInfos = classType.GetFields();
+
+                // Do we want to filter internal fields to retrieve ?
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    List<MetadataFieldInfo> filteredInfos = new List<MetadataFieldInfo>();
+                    foreach (MetadataFieldInfo fi in fieldInfos)
+                        if (filter.IndexOf(fi.Name) != -1) filteredInfos.Add(fi);
+                    fieldInfos = filteredInfos.ToArray();
+                }
+
+                foreach (MetadataFieldInfo fi in fieldInfos)
                 {
                     CorValue fieldValue = null;
                     try
                     {
+                        // "this" is not useful
+                        if (fi.Name == "this") continue;
                         if (fi.IsLiteral)
                         {
                             fieldValue = null;
@@ -847,8 +838,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                         {
                             if (cFrame == null)
                             {
-                                // Without a frame, we won't be able to find static values.  So
-                                // just skip this guy
+                                // Without a frame, we won't be able to find static values. So just skip this guy
                                 continue;
                             }
 
@@ -864,7 +854,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
                     {
                         // we won't report any problems.
                     }
-                    al.Add(new MDbgValue(Process, fi.Name, fieldValue));
+                    al.Add(new MDbgValue(Process, fi.Name, fieldValue, this));
                 }
                 cType = cType.Base;
                 if (cType == null)
@@ -910,5 +900,7 @@ namespace Microsoft.Samples.Debugging.MdbgEngine
         private CorValue m_corValue;
         private MDbgValue[] m_cachedFields;
         private MDbgProcess m_process;
+
+        public MDbgValue Parent { get; private set; }
     }
 }

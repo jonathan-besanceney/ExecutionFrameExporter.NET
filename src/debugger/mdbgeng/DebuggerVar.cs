@@ -5,17 +5,11 @@
 //---------------------------------------------------------------------
 
 using System;
-using System.Threading;
-using System.Diagnostics;
 using System.Collections;
-using System.Reflection;
-using System.IO;
+using System.Diagnostics;
 
 using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
-using Microsoft.Samples.Debugging.CorMetadata;
-
-using System.Runtime.Remoting;
 namespace Microsoft.Samples.Debugging.MdbgEngine
 {
     /// <summary>

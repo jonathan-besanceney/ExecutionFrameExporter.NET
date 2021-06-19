@@ -5,7 +5,6 @@
 //---------------------------------------------------------------------
 using System;
 //using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -13,7 +12,7 @@ using Microsoft.Samples.Debugging.CorDebug.NativeApi;
 using Microsoft.Samples.Debugging.Native;
 
 namespace Microsoft.Samples.Debugging.CorDebug
-{ 
+{
     // This class is a thin managed wrapper over the V3 stackwalking API (ICorDebugStackWalk).
     // It does not expose ICorDebugInternalFrame.  Use the derived class CorStackWalkEx if you want 
     // ICorDebugInternalFrame.

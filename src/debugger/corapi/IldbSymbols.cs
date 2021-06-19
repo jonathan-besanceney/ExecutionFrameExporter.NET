@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Runtime.InteropServices;
 
-namespace Microsoft.Samples.Debugging.CorSymbolStore 
+namespace Microsoft.Samples.Debugging.CorSymbolStore
 {
     /// <summary>
-    /// A specialization of SymbolBinder to using ildbsymbols.dll (ILDB symbol format)
+    /// A specialization of SymbolBinder to use ildbsymbols.dll (ILDB symbol format)
     /// Note that ildbsymbols.dll must be available in the current directory or on the path.
     /// </summary>
     internal class IldbSymbolBinder : SymbolBinder
@@ -27,7 +25,7 @@ namespace Microsoft.Samples.Debugging.CorSymbolStore
     }
 
     /// <summary>
-    /// A specialization of SymbolWriter to using ildbsymbols.dll (ILDB symbol format)
+    /// A specialization of SymbolWriter to use ildbsymbols.dll (ILDB symbol format)
     /// </summary>
     internal class IldbSymbolWriter : SymbolWriter
     {

@@ -4,19 +4,18 @@
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //---------------------------------------------------------------------
 using System;
-using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
+using System.Globalization;
+using System.IO;
 using System.Reflection;
 using System.Text;
-using System.Security.Permissions;
-using System.Globalization;
+using System.Threading;
 
-using Microsoft.Samples.Debugging.MdbgEngine;
 using Microsoft.Samples.Debugging.CorDebug;
 using Microsoft.Samples.Debugging.CorDebug.NativeApi;
+using Microsoft.Samples.Debugging.MdbgEngine;
 
 // UNDONE: Fix the underlying cause of this warning
 

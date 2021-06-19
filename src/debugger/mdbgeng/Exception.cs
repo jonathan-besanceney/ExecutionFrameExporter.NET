@@ -6,9 +6,6 @@
 using System;
 using System.Runtime.Serialization;
 
-using Microsoft.Samples.Debugging.CorDebug;
-using Microsoft.Samples.Debugging.CorMetadata;
-
 
 namespace Microsoft.Samples.Debugging.MdbgEngine
 {

@@ -6,12 +6,10 @@
 
 
 // These interfaces serve as an extension to the BCL's SymbolStore interfaces.
-namespace Microsoft.Samples.Debugging.CorSymbolStore 
+namespace Microsoft.Samples.Debugging.CorSymbolStore
 {
-    using System.Diagnostics.SymbolStore;
-    
     using System;
-    using System.Text;
+    using System.Diagnostics.SymbolStore;
     using System.Runtime.InteropServices;
     using System.Runtime.InteropServices.ComTypes;
 
