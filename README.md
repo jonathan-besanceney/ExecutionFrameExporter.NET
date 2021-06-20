@@ -1,40 +1,35 @@
 # ExecutionFrameExporter.NET
 
-ExecutionFrameExporter.NET is a proof-of-concept/experiment based on the Microsoft NET Framework Command-Line Debugger Sample (MDbg Sample), ExecutionFrameExporter.NET initiates a debugging session on a .NET application to exports all execution frames.
+Experiment based on Microsoft .NET Framework Command-Line Debugger Sample - MDbg Sample. It starts a debugging session on a .NET app and exports all execution steps/frames.
 
-## Goals
+## Goal
 
-Debugging is often a time consumming activity. While some bugs are relatively easy to catch, others are more insiduous. How to demontrates a race condition on an 1MLoc+ app ? Where does this uncaught exception come from ? Oh! forgot to step in, need to start again...
+Debugging is often a time-consuming activity. While some bugs are easy to fix, others are more tricky. How to demonstrate a race condition on an 1MLoc+ app ? Where does this uncaught exception come from ? Oh! forgot to step in, need to start again...
+There are plenty of software to make your debugger life easier you will say. Yes, but I did not find the perfect fit to handle MSIL, all thread at once.  
 
-The main idea behind the execution frame exporter is a driven debugging tool, retrieving all useful information from the current execution frame in all active threads:
+The idea is to make available useful execution step information for all active threads:
 * source line and position
 * current exception
 * current method and its parameters
 * local variable values
-* litteral and static variable values
+* literal and static variable values
 
-These exported frames should help to :
-* have a complete or user defined history of program execution : user can define custom breakpoints
+Once processed with the tool of your choice, these exported frames should help to:
+* have a complete or user defined history of program execution - users can define their own breakpoints
 * create method execution trees
 * create execution and sequence diagrams
 * locate origin of uncaught exception
 * locate race conditions / locks
-* ...
+* ... (your ideas go there)
 
 ## Next Steps
-* Optimize MDbg internals, this is currently the bigger bottleneck (might be fun to use ExecutionFrameExporter to record ExecutionFrameExporter execution)
+
+* Optimize MDbg engine. This is currently the bigger bottleneck (might be fun to use ExecutionFrameExporter to record ExecutionFrameExporter execution)
+* Study thread scheduling. Currently, nothing is done on that topic. https://docs.microsoft.com/en-us/dotnet/standard/threading/scheduling-threads 
 * Create Unit Tests
 * Attach ExecutionFrameExporter to a running process is not yet tested
 * Mesure execution time
 * Implement RabbitMQ Output
-
-## Perimeter
-
-ExecutionFrameExporter.NET is only an execution frame exporter. Current available outputs are :
-* JSON txt file
-* RabbitMQ (to be implemented)
-
-It means that you will need at least a visualisation tool to deal with the JSON exports, and most likely a NoSQL DB with an ETL tool plugged to RabbitMQ.
 
 ## Technical
 
@@ -48,8 +43,7 @@ FrameExporter :
     -symbolDir=Path\to\pdb
     -attach=pid
     -run=Path\to\bin
-    -args=""...""
+    -args="..."
     -bp="Path\to\sourcefile#startLine"[,"Path\to\sourcefile#endLine"]
     -stopOnNewThread
     -sessionName=MyAutomatedDebugSession
-
