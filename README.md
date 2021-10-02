@@ -24,12 +24,17 @@ Once processed with the tool of your choice, these exported frames should help t
 
 ## Next Steps
 
-* Optimize MDbg engine. This is currently the bigger bottleneck (might be fun to use ExecutionFrameExporter to record ExecutionFrameExporter execution)
+* Optimize MDbg engine. This is ~~currently~~ not only the biggest bottleneck. 
+    - It might be fun to use ExecutionFrameExporter to record ExecutionFrameExporter execution : Yes it is! several issues prevents recording to be completed :
+        + Variable values retrieval for each frame is not optimal. CorValueBreakpoint should be tested to see if it's possible to retrieve only changed variable values.
+        + Current JSON frame recording are too big to be useful. This questions NoSQL storage idea. Would a relational schema be more efficient ?
+        + ValueInfo should be refactored to store complex types
+        + AssemblyMgr should be used inside MDbg to avoid unnecessary COM API calls in MDbgFunction and allow BreakpointMgr to detect non-bindable delegate methods (currently skipped using IsBound property...)
+
 * Study thread scheduling. Currently, nothing is done on that topic. https://docs.microsoft.com/en-us/dotnet/standard/threading/scheduling-threads 
-* Create Unit Tests
 * Attach ExecutionFrameExporter to a running process is not yet tested
 * Mesure execution time
-* Implement RabbitMQ Output
+* Implement RabbitMQ Output?
 
 ## Technical
 
